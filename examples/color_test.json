@@ -1,0 +1,14 @@
+{
+  "name": "ANSI color test",
+  "rows": 5,
+  "cols": 20,
+  "timeout": 10,
+  "steps": [
+    { "start": "printf '\\033[1;36mTUI Header\\033[0m'" },
+    { "wait_for_stable": true },
+    { "assert_text": "TUI Header" },
+    { "assert_fg": [0, 0], "is": "cyan" },
+    { "assert_style": [0, 0], "bold": true },
+    { "close": true }
+  ]
+}

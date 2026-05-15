@@ -1,0 +1,72 @@
+# frozen_string_literal: true
+
+require "rspec/expectations"
+
+# RSpec matchers for TUITD::State objects.
+#
+# Usage:
+#   require "tui_td/matchers"
+#
+#   state = TUITD::State.new(driver.state_data)
+#   expect(state).to have_text("Welcome")
+#   expect(state).to have_fg("cyan").at(0, 0)
+#
+module TUITD
+  module Matchers
+    RSpec::Matchers.define :have_text do |expected|
+      match do |state|
+        state.find_text(expected).any?
+      end
+
+      description { "have text #{expected.inspect}" }
+      failure_message { |state| "expected terminal to contain #{expected.inspect}" }
+      failure_message_when_negated { |state| "expected terminal NOT to contain #{expected.inspect}" }
+    end
+
+    RSpec::Matchers.define :have_fg do |expected|
+      chain(:at) { |row, col| @row, @col = row, col }
+
+      match do |state|
+        @actual = state.foreground_at(@row, @col)
+        @actual == expected
+      end
+
+      description { "have foreground #{expected.inspect} at [#{@row},#{@col}]" }
+      failure_message do |state|
+        "expected FG at [#{@row},#{@col}] to be #{expected.inspect}, but was #{@actual.inspect}"
+      end
+    end
+
+    RSpec::Matchers.define :have_bg do |expected|
+      chain(:at) { |row, col| @row, @col = row, col }
+
+      match do |state|
+        @actual = state.background_at(@row, @col)
+        @actual == expected
+      end
+
+      description { "have background #{expected.inspect} at [#{@row},#{@col}]" }
+      failure_message do |state|
+        "expected BG at [#{@row},#{@col}] to be #{expected.inspect}, but was #{@actual.inspect}"
+      end
+    end
+
+    RSpec::Matchers.define :have_style do
+      chain(:at) { |row, col| @row, @col = row, col }
+      chain(:with) { |expected| @expected = expected }
+
+      match do |state|
+        @actual = state.style_at(@row, @col)
+        @expected ||= {}
+        @expected.all? { |k, v| @actual[k] == v }
+      end
+
+      description do
+        "have style #{@expected.inspect} at [#{@row},#{@col}]"
+      end
+      failure_message do |state|
+        "expected style at [#{@row},#{@col}] to be #{@expected.inspect}, but was #{@actual.inspect}"
+      end
+    end
+  end
+end
