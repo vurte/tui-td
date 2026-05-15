@@ -1,0 +1,8 @@
+*.gem
+.bundle/
+vendor/bundle/
+.DS_Store
+*.png
+*.gif
+tmp/
+Gemfile.lock
