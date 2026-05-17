@@ -137,16 +137,16 @@ module TUITD
           else
             i += 1
           end
-        elsif processed[i] =~ /[[:print:]]/
-          # Printable character
+        elsif (char, char_len = _utf8_char_at(processed, i))
+          # Printable character (including multi-byte UTF-8)
           if cursor[:row] < rows && cursor[:col] < cols
             cell = grid[cursor[:row]][cursor[:col]]
-            cell[:char] = processed[i]
+            cell[:char] = char
             cell.merge!(attrs)
             cursor[:col] += 1
             cursor[:col] = cols - 1 if cursor[:col] >= cols
           end
-          i += 1
+          i += char_len
         else
           i += 1
         end
@@ -408,6 +408,39 @@ module TUITD
       else
         nil
       end
+    end
+
+    # Extract a single UTF-8 character at position i in a binary string.
+    # Returns [char_string, byte_length] or nil if the byte is not printable/valid.
+    def self._utf8_char_at(str, i)
+      byte = str.getbyte(i)
+      return nil unless byte
+
+      if byte < 0x80
+        # Single-byte ASCII
+        return nil unless byte >= 0x20  # only printable, skip control chars
+        return [byte.chr, 1]
+      end
+
+      # Multi-byte UTF-8
+      len = if byte & 0xE0 == 0xC0
+              2
+      elsif byte & 0xF0 == 0xE0
+              3
+      elsif byte & 0xF8 == 0xF0
+              4
+      else
+              return nil  # continuation byte or invalid — let main loop advance
+      end
+      return nil if i + len > str.bytesize
+
+      bytes = str.byteslice(i, len)
+      char = bytes.dup.force_encoding("UTF-8")
+      return nil unless char.valid_encoding?
+
+      [char, len]
+    rescue StandardError
+      nil
     end
   end
 end

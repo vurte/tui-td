@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.1.3
+
+- UTF-8 multi-byte character support — proper handling of 2/3/4-byte sequences via `_utf8_char_at`
+- CLI help: add Examples section and clearer command descriptions
+
 ## 0.1.2
 
 - Background reader thread — continuous PTY reads prevent buffer overflow
