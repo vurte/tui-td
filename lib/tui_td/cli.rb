@@ -34,6 +34,14 @@ module TUITD
         opts.separator "  tui-td test examples/echo_test.json"
         opts.separator "  tui-td serve"
         opts.separator ""
+        opts.separator "Interactive commands (drive mode):"
+        opts.separator "  state              Show terminal state as pretty JSON"
+        opts.separator "  raw                Show raw ANSI output"
+        opts.separator "  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,"
+        opts.separator "                     backspace, ctrl_c, ctrl_d)"
+        opts.separator "  <text>             Send text to the TUI"
+        opts.separator "  exit               Quit drive mode"
+        opts.separator ""
         opts.separator "Global options:"
 
         opts.on("-r", "--rows N", Integer, "Terminal rows (default: 40)") do |r|
