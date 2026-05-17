@@ -116,7 +116,8 @@ Global options:
   -h, --help            Show complete reference (commands, options, examples, interactive commands)
 ```
 
-`tui-td --help` serves as the full CLI reference — no need to consult the docs.
+`tui-td --help` serves as the full CLI reference. `tui-td help test` shows all JSON test
+step types and `tui-td help rspec` shows all RSpec matchers — no need to consult the docs.
 
 ## Ruby API
 

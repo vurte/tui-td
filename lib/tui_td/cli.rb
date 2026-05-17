@@ -23,7 +23,7 @@ module TUITD
         opts.separator "  drive <command>    Drive a TUI interactively"
         opts.separator "  run <command>      Run a TUI app and show live output"
         opts.separator "  test <file.json>   Run JSON test file"
-        opts.separator "  help               Show this help"
+        opts.separator "  help [topic]       Show this help, or help test / help rspec"
         opts.separator ""
         opts.separator "Examples:"
         opts.separator "  tui-td capture \"ls -la\""
@@ -95,9 +95,20 @@ module TUITD
         cmd_capture(command_opts, global_opts)
       when "test"
         cmd_test(command_opts, global_opts)
-      when nil, "help"
-        puts OptionParser.new { |o| o.banner = "Usage: tui-td <command> [options]" }
-        exit 0
+      when "help"
+        topic = argv.shift
+        case topic
+        when "test"
+          _help_test
+        when "rspec"
+          _help_rspec
+        when nil
+          _help_main
+        else
+          abort "Unknown help topic: #{topic.inspect}\nTry: tui-td help test, tui-td help rspec"
+        end
+      when nil
+        _help_main
       else
         abort "Unknown command: #{command.inspect}\nUse tui-td --help for usage"
       end
@@ -248,6 +259,96 @@ module TUITD
         line = row.map { |cell| cell[:char] }.join
         puts line.empty? ? "~" : line
       end
+    end
+
+    def _help_main
+      puts OptionParser.new { |o| o.banner = "Usage: tui-td <command> [options]" }
+      puts
+      puts "For more: tui-td help test   (JSON test step types)"
+      puts "          tui-td help rspec  (RSpec matchers)"
+      exit 0
+    end
+
+    def _help_test
+      puts <<~HELP
+        JSON Test Step Types
+        ====================
+
+        A test file is a JSON document: {"name": "...", "steps": [...]}
+
+        Top-level keys: name, steps, rows (default 40), cols (default 120),
+                        timeout (default 30), chdir
+
+        Each step is an object with a single action key:
+
+          {"start": "<command>"}
+              Start a TUI process in a PTY.
+
+          {"send": "<text>"}
+              Send text to the TUI. Use "\\n" for Enter.
+
+          {"send_key": "<name>"}
+              Send a keystroke. Names: enter, tab, escape, up, down,
+              left, right, backspace, ctrl_c, ctrl_d.
+
+          {"wait_for_text": "<substring>"}
+              Wait until the given text appears in the output.
+
+          {"wait_for_stable": true}
+              Wait until the output stops changing (default 300ms quiet).
+
+          {"assert_text": "<substring>"}
+              Fail if the text is not found in the current state.
+
+          {"assert_fg": [row, col], "is": "<color>"}
+              Assert foreground color at cell. Colors: "default",
+              named ANSI (red, green, blue, cyan, ...), "bright_*",
+              "color<N>" (256-color), "#rrggbb" (TrueColor).
+
+          {"assert_bg": [row, col], "is": "<color>"}
+              Assert background color at cell. Same color format.
+
+          {"assert_style": [row, col], "bold": true, "italic": false, ...}
+              Assert style attributes at cell. Checks only the keys provided.
+
+          {"screenshot": "<path>"}
+              Save a PNG screenshot. Path defaults to /tmp/tui_td_<ts>.png.
+
+          {"html": "<path>"}
+              Save an HTML render. Path defaults to /tmp/tui_td_<ts>.html.
+
+          {"close": true}
+              Close the driver session.
+
+        Example test file: examples/echo_test.json
+      HELP
+      exit 0
+    end
+
+    def _help_rspec
+      puts <<~HELP
+        RSpec Matchers
+        ==============
+
+        require "tui_td/matchers"
+
+        have_text(expected)
+            Passes if expected text appears anywhere in the terminal state.
+            Usage: expect(state).to have_text("Hello")
+
+        have_fg(expected).at(row, col)
+            Assert foreground color at [row, col] matches expected.
+            Usage: expect(state).to have_fg("red").at(0, 5)
+
+        have_bg(expected).at(row, col)
+            Assert background color at [row, col] matches expected.
+            Usage: expect(state).to have_bg("default").at(0, 0)
+
+        have_style.at(row, col).with(bold: true, italic: false, ...)
+            Assert style attributes at [row, col] match the given hash.
+            Usage: expect(state).to have_style.at(0, 0).with(bold: true)
+      HELP
+      exit 0
     end
   end
 end
