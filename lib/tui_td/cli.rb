@@ -243,14 +243,17 @@ module TUITD
 
       on_step = if verbose || live || step_mode
                   lambda do |info|
+                    if live && info[:driver]
+                      info[:driver].wait_for_stable(stable_ms: 200)
+                    end
                     if verbose
                       status = info[:result].passed ? "PASS" : "FAIL"
                       puts "[#{info[:index] + 1}/#{info[:total]}] #{info[:action]}: #{info[:result].message}"
                       puts "      → #{status}"
                     end
-                    if live && info[:state_data]
+                    if live && info[:driver]
                       print "\e[2J\e[H"  # clear screen, home cursor
-                      _render_text(info[:state_data])
+                      _render_text(info[:driver].state_data)
                     end
                     if step_mode
                       print "\n[Enter=weiter, q=abbruch] "

@@ -165,6 +165,7 @@ module TUITD
             action: action,
             value: value,
             result: r,
+            driver: driver,
             state_data: state_data
           )
         end
