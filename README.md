@@ -142,6 +142,16 @@ Global options:
 `tui-td --help` serves as the full CLI reference. `tui-td help test` shows all JSON test
 step types and `tui-td help rspec` shows all RSpec matchers — no need to consult the docs.
 
+## Demo
+
+Step-by-step live view of a vim test — type "Hello World", copy the line, replace "World" with "Sun":
+
+![vim test demo](examples/vim_demo.gif)
+
+```bash
+tui-td -vls test examples/vim_hello_world.json
+```
+
 ## Ruby API
 
 ### Driver — Start, send, capture
