@@ -71,6 +71,15 @@ module TUITD
         opts.on("--text", "Output state as plain text table") do |_|
           global_opts[:format] = :text
         end
+        opts.on("-v", "--verbose", "Show each test step as it runs") do |_|
+          global_opts[:verbose] = true
+        end
+        opts.on("-l", "--live", "Show terminal state after each test step") do |_|
+          global_opts[:live] = true
+        end
+        opts.on("-s", "--step", "Pause after each test step for confirmation") do |_|
+          global_opts[:step_mode] = true
+        end
         opts.on("--version", "Show version") do
           puts "tui-td #{TUITD::VERSION}"
           exit 0
@@ -228,9 +237,31 @@ module TUITD
       path = args.first
       abort "File not found: #{path}" unless File.exist?(path)
 
+      verbose = globals[:verbose]
+      live = globals[:live]
+      step_mode = globals[:step_mode]
+
+      on_step = if verbose || live || step_mode
+                  lambda do |info|
+                    if verbose
+                      status = info[:result].passed ? "PASS" : "FAIL"
+                      puts "[#{info[:index] + 1}/#{info[:total]}] #{info[:action]}: #{info[:result].message}"
+                      puts "      → #{status}"
+                    end
+                    if live && info[:state_data]
+                      _render_text(info[:state_data])
+                    end
+                    if step_mode
+                      print "\n[Enter=weiter, q=abbruch] "
+                      input = $stdin.gets
+                      exit 1 if input&.chomp == "q"
+                    end
+                  end
+                end
+
       require "json"
       plan = JSON.parse(File.read(path), symbolize_names: true)
-      runner = TestRunner.new(plan)
+      runner = TestRunner.new(plan, on_step: on_step)
       result = runner.run
 
       puts
@@ -277,6 +308,9 @@ module TUITD
         Run from CLI:
 
           tui-td test examples/echo_test.json
+          tui-td -v test examples/echo_test.json   (verbose: show each step)
+          tui-td -vl test examples/echo_test.json  (verbose + live terminal view)
+          tui-td -vs test examples/echo_test.json  (verbose + pause after each step)
 
         Or from Ruby code:
 

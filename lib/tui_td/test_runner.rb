@@ -26,10 +26,11 @@ module TUITD
   class TestRunner
     Result = Struct.new(:step, :passed, :message, keyword_init: true)
 
-    def initialize(source)
+    def initialize(source, on_step: nil)
       raw = source.is_a?(String) ? JSON.parse(source) : source
       @plan = raw.transform_keys(&:to_sym)
       @plan[:steps] = @plan[:steps].map { |s| s.transform_keys(&:to_sym) }
+      @on_step = on_step
     end
 
     def run
@@ -150,6 +151,23 @@ module TUITD
 
         results << r
         all_passed &&= r.passed
+
+        if @on_step
+          state_data = nil
+          begin
+            state_data = driver.state_data if driver
+          rescue StandardError
+            # ignore — state retrieval is best-effort
+          end
+          @on_step.call(
+            index: results.size - 1,
+            total: @plan[:steps].size,
+            action: action,
+            value: value,
+            result: r,
+            state_data: state_data
+          )
+        end
       end
 
       driver&.close
