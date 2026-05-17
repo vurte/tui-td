@@ -6,8 +6,6 @@
 - Thread-safe output buffer with Mutex protection
 - DSR (Device Status Report) support — respond to `\e[6n` cursor position requests
 - Replace `IO.select`/`readpartial` with `read_nonblock`
-- UTF-8 multi-byte character support — proper handling of 2/3/4-byte sequences via `_utf8_char_at`
-- CLI help: add Examples section and clearer command descriptions
 
 ## 0.1.1
 
