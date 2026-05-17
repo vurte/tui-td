@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.2.0
+
+- Live debug modes for `tui-td test`: `-v` (verbose), `-l` (live screen-refresh), `-s` (step-by-step pause)
+- Fix: skip DEC private mode sequences (`\e[?1049h` alternate screen, `\e[?25h` cursor visibility, etc.)
+- TestRunner `on_step` callback API for programmatic step-by-step observation
+- Vim interaction test example: type, yank, paste, substitute
+- Removed aruba dev dependency from Gemfile
+
 ## 0.1.3
 
 - UTF-8 multi-byte character support in ANSI parser (`_utf8_char_at`)
