@@ -32,6 +32,7 @@ module TUITD
         opts.separator "  tui-td -C /my/project capture \"make test\""
         opts.separator "  tui-td drive \"vim file.txt\" --rows 24 --cols 80"
         opts.separator "  tui-td test examples/echo_test.json"
+        opts.separator "  tui-td -vl test examples/vim_hello_world.json"
         opts.separator "  tui-td serve"
         opts.separator ""
         opts.separator "Interactive commands (drive mode):"
@@ -315,6 +316,7 @@ module TUITD
           tui-td -v test examples/echo_test.json   (verbose: show each step)
           tui-td -vl test examples/echo_test.json  (verbose + live terminal view)
           tui-td -vs test examples/echo_test.json  (verbose + pause after each step)
+          tui-td -vls test examples/vim_hello_world.json  (all three: watch vim edit live)
 
         Or from Ruby code:
 

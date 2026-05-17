@@ -111,6 +111,7 @@ Examples:
   tui-td -C /my/project capture "make test"
   tui-td drive "vim file.txt" --rows 24 --cols 80
   tui-td test examples/echo_test.json
+  tui-td -vl test examples/vim_hello_world.json
   tui-td serve
 
 Interactive commands (drive mode):
@@ -131,6 +132,9 @@ Global options:
   --json                Output state as compact JSON (includes raw ANSI)
   --pretty              Output state as pretty JSON
   --text                Output state as plain text table
+  -v, --verbose         Show each test step as it runs
+  -l, --live            Show terminal state after each test step (screen-refresh)
+  -s, --step            Pause after each test step for confirmation
   --version             Show version
   -h, --help            Show complete reference
 ```
