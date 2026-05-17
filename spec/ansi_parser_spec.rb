@@ -90,5 +90,30 @@ RSpec.describe TUITD::ANSIParser do
       state = described_class.parse("hello world", 10, 40)
       expect(state[:pending_dsr]).to be false
     end
+
+    it "skips DEC private mode set sequences like \\e[?25h" do
+      # Cursor visibility toggle should not leak chars into output
+      state = described_class.parse("hello\e[?25hworld", 10, 40)
+      line = state[:rows][0].map { |c| c[:char] }.join
+      expect(line).to start_with("helloworld")
+    end
+
+    it "skips DEC private mode reset sequences like \\e[?25l" do
+      state = described_class.parse("before\e[?25lafter", 10, 40)
+      line = state[:rows][0].map { |c| c[:char] }.join
+      expect(line).to start_with("beforeafter")
+    end
+
+    it "skips alternate screen buffer \\e[?1049h" do
+      state = described_class.parse("vim\e[?1049hcontent", 10, 40)
+      line = state[:rows][0].map { |c| c[:char] }.join
+      expect(line).to start_with("vimcontent")
+    end
+
+    it "skips alternate screen buffer exit \\e[?1049l" do
+      state = described_class.parse("leaving\e[?1049lback", 10, 40)
+      line = state[:rows][0].map { |c| c[:char] }.join
+      expect(line).to start_with("leavingback")
+    end
   end
 end

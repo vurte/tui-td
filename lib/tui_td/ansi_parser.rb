@@ -103,7 +103,7 @@ module TUITD
         if processed[i] == "\e" && processed[i + 1] == "["
           # Find end of CSI sequence
           j = i + 2
-          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fmnR]/)
+          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fhlmnR]/)
           seq = processed[i..j]
 
           dsr = _apply_csi(seq, cursor, attrs, grid, rows, cols)
@@ -214,7 +214,7 @@ module TUITD
     def self._apply_csi(seq, cursor, attrs, grid, rows, cols)
       # Strip leading escape char if present
       cleaned = seq.sub(/^\e/, "")
-      match = cleaned.match(/^\[([\d;]*)([A-HJ-KP-SX@`fhmnR])$/)
+      match = cleaned.match(/^\[([\d;]*)([A-HJ-KP-SX@`fhlmnR])$/)
       return unless match
 
       params = match[1].split(";").map(&:to_i)
@@ -270,6 +270,8 @@ module TUITD
           next unless cursor[:row] < rows && cursor[:col] + i < cols
           grid[cursor[:row]][cursor[:col] + i][:char] = " "
         end
+      when "h", "l" # DEC private mode set/reset — skip (alternate screen, cursor show/hide, etc.)
+        nil
       when "n" # DSR — Device Status Report request
         # \e[6n = request cursor position → caller must respond with \e[row;colR
         return params[0] == 6
