@@ -20,7 +20,7 @@ module TUITD
         opts.separator "Commands:"
         opts.separator "  serve              Start MCP server (JSON-RPC over stdio)"
         opts.separator "  capture <command>  Run once, capture and display state"
-        opts.separator "  drive <cmd>        Drive a TUI interactively"
+        opts.separator "  drive <command>    Drive a TUI interactively"
         opts.separator "  run <command>      Run a TUI app and show live output"
         opts.separator "  test <file.json>   Run JSON test file"
         opts.separator "  help               Show this help"
