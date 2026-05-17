@@ -74,7 +74,7 @@ module TUITD
         opts.on("-v", "--verbose", "Show each test step as it runs") do |_|
           global_opts[:verbose] = true
         end
-        opts.on("-l", "--live", "Show terminal state after each test step") do |_|
+        opts.on("-l", "--live", "Show terminal state after each step (screen-refresh)") do |_|
           global_opts[:live] = true
         end
         opts.on("-s", "--step", "Pause after each test step for confirmation") do |_|
@@ -249,6 +249,7 @@ module TUITD
                       puts "      → #{status}"
                     end
                     if live && info[:state_data]
+                      print "\e[2J\e[H"  # clear screen, home cursor
                       _render_text(info[:state_data])
                     end
                     if step_mode
