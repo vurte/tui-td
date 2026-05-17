@@ -54,6 +54,10 @@ module TUITD
         opts.on("--text", "Output state as plain text table") do |_|
           global_opts[:format] = :text
         end
+        opts.on("--version", "Show version") do
+          puts "tui-td #{TUITD::VERSION}"
+          exit 0
+        end
         opts.on("-h", "--help", "Show help") do
           puts opts
           exit 0
