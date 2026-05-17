@@ -113,8 +113,10 @@ Global options:
   --json                Output state as compact JSON (includes raw ANSI)
   --pretty              Output state as pretty JSON
   --text                Output state as plain text table (default)
-  -h, --help            Show help
+  -h, --help            Show complete reference (commands, options, examples, interactive commands)
 ```
+
+`tui-td --help` serves as the full CLI reference — no need to consult the docs.
 
 ## Ruby API
 
