@@ -271,10 +271,20 @@ module TUITD
 
     def _help_test
       puts <<~HELP
-        JSON Test Step Types
-        ====================
+        JSON Test Format
+        ================
 
-        A test file is a JSON document: {"name": "...", "steps": [...]}
+        Run from CLI:
+
+          tui-td test examples/echo_test.json
+
+        Or from Ruby code:
+
+          require "tui_td/test_runner"
+          runner = TUITD::TestRunner.new(name: "my test", steps: [...])
+          result = runner.run  # => { passed: true, results: [...] }
+
+        A test is a Hash or JSON string: {"name": "...", "steps": [...]}
 
         Top-level keys: name, steps, rows (default 40), cols (default 120),
                         timeout (default 30), chdir
@@ -330,7 +340,32 @@ module TUITD
         RSpec Matchers
         ==============
 
-        require "tui_td/matchers"
+        Matchers work on TUITD::State objects, not raw output.
+        Get a State from the Driver:
+
+          require "tui_td"
+          require "tui_td/matchers"
+
+          driver = TUITD::Driver.new("my_tui", rows: 24, cols: 80)
+          driver.start
+          state = TUITD::State.new(driver.state_data)
+
+          expect(state).to have_text("Hello")
+          expect(state).to have_fg("red").at(0, 5)
+
+          driver.close
+
+        Or build a State manually for unit tests:
+
+          state = TUITD::State.new(
+            size: { rows: 5, cols: 20 },
+            cursor: { row: 0, col: 0 },
+            rows: [[{ char: "H", fg: "default", bg: "default",
+                      bold: false, italic: false, underline: false }]]
+          )
+
+        Matchers
+        --------
 
         have_text(expected)
             Passes if expected text appears anywhere in the terminal state.
