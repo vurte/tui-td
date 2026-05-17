@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.1.3
+
+- UTF-8 multi-byte character support in ANSI parser (`_utf8_char_at`)
+- `--help` is now a complete CLI reference: Examples section, interactive drive commands
+- `tui-td help test` — JSON test step reference with CLI and Ruby code workflow
+- `tui-td help rspec` — RSpec matchers reference with Driver/State setup workflow
+- `--version` flag
+
 ## 0.1.2
 
 - Background reader thread — continuous PTY reads prevent buffer overflow
