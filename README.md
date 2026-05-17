@@ -98,22 +98,41 @@ Usage: tui-td <command> [options]
 
 Commands:
   serve              Start MCP server (JSON-RPC over stdio)
-  test <file>        Run JSON test file
-  run <command>      Run a TUI app and show live output
-  drive <command>    Drive a TUI with structured state output
   capture <command>  Run once, capture and display state
+  drive <command>    Drive a TUI interactively
+  run <command>      Run a TUI app and show live output
+  test <file.json>   Run JSON test file
+  help [topic]       Show this help, or help test / help rspec
+
+Examples:
+  tui-td capture "ls -la"
+  tui-td --screenshot out.png capture "htop" --timeout 5
+  tui-td --html out.html capture "glow README.md"
+  tui-td -C /my/project capture "make test"
+  tui-td drive "vim file.txt" --rows 24 --cols 80
+  tui-td test examples/echo_test.json
+  tui-td serve
+
+Interactive commands (drive mode):
+  state              Show terminal state as pretty JSON
+  raw                Show raw ANSI output
+  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,
+                     backspace, ctrl_c, ctrl_d)
+  <text>             Send text to the TUI
+  exit               Quit drive mode
 
 Global options:
   -r, --rows N          Terminal rows (default: 40)
   -c, --cols N          Terminal cols (default: 120)
-  -C, --chdir PATH      Working directory for the command
   -t, --timeout N       Timeout in seconds (default: 30)
+  -C, --chdir PATH      Working directory for the command
   --screenshot PATH     Save PNG screenshot
   --html PATH           Save HTML render for browser viewing
   --json                Output state as compact JSON (includes raw ANSI)
   --pretty              Output state as pretty JSON
-  --text                Output state as plain text table (default)
-  -h, --help            Show complete reference (commands, options, examples, interactive commands)
+  --text                Output state as plain text table
+  --version             Show version
+  -h, --help            Show complete reference
 ```
 
 `tui-td --help` serves as the full CLI reference. `tui-td help test` shows all JSON test
