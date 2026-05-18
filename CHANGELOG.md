@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.2.2
+
+- `wait_for_exit` and `assert_exit` test steps — test process exit codes
+
 ## 0.2.1
 
 - `Driver#refresh` — explicit state re-parse for MCP server clients
