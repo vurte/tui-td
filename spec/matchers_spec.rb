@@ -94,4 +94,16 @@ RSpec.describe TUITD::Matchers do
       expect { expect(state).to have_style.at(0, 0).with(bold: true) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
     end
   end
+
+  describe "have_exit_status" do
+    it "passes when exit status matches" do
+      driver = double("Driver", exitstatus: 0)
+      expect(driver).to have_exit_status(0)
+    end
+
+    it "fails when exit status differs" do
+      driver = double("Driver", exitstatus: 1)
+      expect { expect(driver).to have_exit_status(0) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+  end
 end

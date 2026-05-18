@@ -41,6 +41,7 @@ module TUITD
         opts.separator "  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,"
         opts.separator "                     backspace, ctrl_c, ctrl_d)"
         opts.separator "  <text>             Send text to the TUI"
+        opts.separator "  exitstatus         Show process exit status (nil if running)"
         opts.separator "  exit               Quit drive mode"
         opts.separator ""
         opts.separator "Global options:"
@@ -188,6 +189,9 @@ module TUITD
             puts driver.state_json(pretty: true)
           elsif input == "raw"
             puts driver.raw_output[0..2000]
+          elsif input == "exitstatus"
+            status = driver.exitstatus
+            puts status ? "Exit status: #{status}" : "Process still running"
           elsif input.start_with?("key ")
             driver.send_keys(input.split(" ", 2).last.to_sym)
           else
@@ -428,6 +432,13 @@ module TUITD
         have_style.at(row, col).with(bold: true, italic: false, ...)
             Assert style attributes at [row, col] match the given hash.
             Usage: expect(state).to have_style.at(0, 0).with(bold: true)
+
+        Driver matchers (work on TUITD::Driver, not State)
+        --------------------------------------------------
+
+        have_exit_status(expected)
+            Assert the process exit status matches expected.
+            Usage: expect(driver).to have_exit_status(0)
       HELP
       exit 0
     end
