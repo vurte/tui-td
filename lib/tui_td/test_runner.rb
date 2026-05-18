@@ -13,15 +13,19 @@ module TUITD
   #   {
   #     "name": "My test",
   #     "rows": 24, "cols": 80, "timeout": 10,
+  #     "chdir": "/path/to/workdir",
+  #     "before_all": [{"start": "my_tui", "env": {"FOO": "bar"}}],
   #     "steps": [
-  #       {"start": "my_tui"},
   #       {"wait_for_text": "> "},
   #       {"send": "hello\n"},
   #       {"assert_text": "hello"},
-  #       {"assert_fg": [0, 0], "is": "cyan"},
-  #       {"close": true}
-  #     ]
+  #       {"assert_fg": [0, 0], "is": "cyan"}
+  #     ],
+  #     "after_all": [{"close": true}]
   #   }
+  #
+  # Per-step "timeout" overrides the top-level default:
+  #   {"wait_for_text": "Slow", "timeout": 60}
   #
   class TestRunner
     Result = Struct.new(:step, :passed, :message, keyword_init: true)
@@ -30,47 +34,60 @@ module TUITD
       raw = source.is_a?(String) ? JSON.parse(source) : source
       @plan = raw.transform_keys(&:to_sym)
       @plan[:steps] = @plan[:steps].map { |s| s.transform_keys(&:to_sym) }
+      @plan[:before_all] = @plan[:before_all]&.map { |s| s.transform_keys(&:to_sym) }
+      @plan[:after_all] = @plan[:after_all]&.map { |s| s.transform_keys(&:to_sym) }
       @on_step = on_step
     end
 
     def run
-      results = []
-      all_passed = true
       driver = nil
       rows = @plan[:rows] || 40
       cols = @plan[:cols] || 120
       timeout = @plan[:timeout] || 30
       chdir = @plan[:chdir]
 
-      @plan[:steps].each do |step|
-        action = step.keys.first.to_s
-        value = step.values.first
-        start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      hooks = [
+        { label: :before_all, steps: @plan[:before_all] || [] },
+        { label: :main, steps: @plan[:steps] },
+        { label: :after_all, steps: @plan[:after_all] || [] }
+      ]
 
-        begin
-          r = case action
-              when "start"
-                driver&.close
-                driver = Driver.new(value.to_s, rows: rows, cols: cols, timeout: timeout, chdir: chdir)
-                driver.start
-                Result.new(step: action, passed: true, message: "Started: #{value}")
+      all_results = []
+      all_passed = true
+      total_steps = hooks.sum { |p| p[:steps].size }
 
-              when "send"
-                ensure_driver!(driver)
-                driver.send(value.to_s)
-                Result.new(step: action, passed: true, message: "Sent #{value.to_s.length} characters")
+      hooks.each do |phase|
+        phase[:steps].each do |step|
+          action = step.keys.first.to_s
+          value = step.values.first
 
-              when "send_key"
-                ensure_driver!(driver)
-                driver.send_keys(value.to_s.to_sym)
-                Result.new(step: action, passed: true, message: "Sent key: #{value}")
+          begin
+            step_timeout = step[:timeout] || timeout
+            r = case action
+                when "start"
+                  driver&.close
+                  env = step[:env] || {}
+                  env = env.transform_keys(&:to_sym).transform_values(&:to_s) if env.is_a?(Hash)
+                  driver = Driver.new(value.to_s, rows: rows, cols: cols, timeout: step_timeout, chdir: chdir, env: env)
+                  driver.start
+                  Result.new(step: action, passed: true, message: "Started: #{value}")
 
-              when "wait_for_text"
-                ensure_driver!(driver)
-                driver.wait_for_text(value.to_s)
-                Result.new(step: action, passed: true, message: "Found: #{value}")
+                when "send"
+                  ensure_driver!(driver)
+                  driver.send(value.to_s)
+                  Result.new(step: action, passed: true, message: "Sent #{value.to_s.length} characters")
 
-              when "wait_for_stable"
+                when "send_key"
+                  ensure_driver!(driver)
+                  driver.send_keys(value.to_s.to_sym)
+                  Result.new(step: action, passed: true, message: "Sent key: #{value}")
+
+                when "wait_for_text"
+                  ensure_driver!(driver)
+                  driver.wait_for_text(value.to_s)
+                  Result.new(step: action, passed: true, message: "Found: #{value}")
+
+                when "wait_for_stable"
                 ensure_driver!(driver)
                 driver.wait_for_stable
                 Result.new(step: action, passed: true, message: "Stable")
@@ -165,7 +182,7 @@ module TUITD
           r = Result.new(step: action, passed: false, message: "#{e.class}: #{e.message}")
         end
 
-        results << r
+        all_results << r
         all_passed &&= r.passed
 
         if @on_step
@@ -176,8 +193,8 @@ module TUITD
             # ignore — state retrieval is best-effort
           end
           @on_step.call(
-            index: results.size - 1,
-            total: @plan[:steps].size,
+            index: all_results.size - 1,
+            total: total_steps,
             action: action,
             value: value,
             result: r,
@@ -186,13 +203,14 @@ module TUITD
           )
         end
       end
+      end
 
       driver&.close
 
       {
         name: @plan[:name] || "(unnamed)",
         passed: all_passed,
-        results: results.map(&:to_h)
+        results: all_results.map(&:to_h)
       }
     end
 
