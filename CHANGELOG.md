@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.2.1
+
+- `Driver#refresh` — explicit state re-parse for MCP server clients
+
 ## 0.2.0
 
 - Live debug modes for `tui-td test`: `-v` (verbose), `-l` (live screen-refresh), `-s` (step-by-step pause)
