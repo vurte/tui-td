@@ -237,4 +237,42 @@ RSpec.describe TUITD::TestRunner do
       expect(result[:passed]).to be true
     end
   end
+
+  describe "exit code" do
+    it "waits for process exit and asserts exit status 0" do
+      plan = {
+        name: "exit 0",
+        rows: 5,
+        cols: 20,
+        timeout: 10,
+        steps: [
+          { start: "true" },
+          { wait_for_exit: true },
+          { assert_exit: 0 },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "fails when exit status does not match" do
+      plan = {
+        name: "exit 1",
+        rows: 5,
+        cols: 20,
+        timeout: 10,
+        steps: [
+          { start: "bash -c 'exit 2'" },
+          { wait_for_exit: true },
+          { assert_exit: 0 },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be false
+      expect(result[:results][2][:message]).to include("Exit status 2")
+    end
+  end
 end

@@ -117,6 +117,15 @@ module TUITD
       @wait_thr&.value
     end
 
+    # Get the process exit status (nil if still running)
+    def exitstatus
+      return nil unless @wait_thr
+      status = @wait_thr.value
+      status&.exitstatus
+    rescue NoMethodError
+      nil
+    end
+
     # Get the terminal output (raw ANSI + text)
     def raw_output
       read_available!

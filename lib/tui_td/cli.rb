@@ -367,8 +367,14 @@ module TUITD
           {"html": "<path>"}
               Save an HTML render. Path defaults to /tmp/tui_td_<ts>.html.
 
+          {"wait_for_exit": true}
+              Wait until the process exits naturally.
+
+          {"assert_exit": <N>}
+              Assert the process exit status equals N.
+
           {"close": true}
-              Close the driver session.
+              Close the driver session (force-kill if needed).
 
         Example test file: examples/echo_test.json
       HELP

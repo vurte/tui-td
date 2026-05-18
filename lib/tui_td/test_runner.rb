@@ -136,6 +136,22 @@ module TUITD
                 HtmlRenderer.new(driver.state_data).render(path)
                 Result.new(step: action, passed: true, message: "Saved: #{path}")
 
+              when "wait_for_exit"
+                ensure_driver!(driver)
+                driver.wait_for_exit
+                status = driver.exitstatus
+                Result.new(step: action, passed: true, message: "Exited with status #{status}")
+
+              when "assert_exit"
+                ensure_driver!(driver)
+                expected = value.to_s.to_i
+                actual = driver.exitstatus
+                if actual == expected
+                  Result.new(step: action, passed: true, message: "Exit status #{expected} matches")
+                else
+                  Result.new(step: action, passed: false, message: "Exit status #{actual}, expected #{expected}")
+                end
+
               when "close"
                 driver&.close
                 driver = nil
