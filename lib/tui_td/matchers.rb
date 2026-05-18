@@ -68,5 +68,21 @@ module TUITD
         "expected style at [#{@row},#{@col}] to be #{@expected.inspect}, but was #{@actual.inspect}"
       end
     end
+
+    # Works on a Driver instance, not State
+    RSpec::Matchers.define :have_exit_status do |expected|
+      match do |driver|
+        @actual = driver.exitstatus
+        @actual == expected
+      end
+
+      description { "have exit status #{expected}" }
+      failure_message do |driver|
+        "expected exit status #{expected}, but was #{@actual}"
+      end
+      failure_message_when_negated do |driver|
+        "expected exit status not to be #{expected}"
+      end
+    end
   end
 end
