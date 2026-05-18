@@ -123,6 +123,13 @@ module TUITD
       @output_mutex.synchronize { @output_buffer.dup }
     end
 
+    # Refresh the terminal state by re-parsing the output buffer.
+    # Call this if the terminal content has changed and you need an up-to-date state.
+    def refresh
+      refresh_state!
+      @state
+    end
+
     # Get structured terminal state as a Hash
     def state_data
       refresh_state! if @state.nil?
