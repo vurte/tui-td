@@ -331,12 +331,24 @@ module TUITD
         A test is a Hash or JSON string: {"name": "...", "steps": [...]}
 
         Top-level keys: name, steps, rows (default 40), cols (default 120),
-                        timeout (default 30), chdir
+                        timeout (default 30), chdir, before_all, after_all
+
+        before_all / after_all are arrays of steps that run before and
+        after the main steps list. Useful for setup/teardown:
+
+          "before_all": [{"start": "my_tui"}, {"wait_for_text": "> "}],
+          "steps": [{"send": "hello\\n"}],
+          "after_all": [{"close": true}]
+
+        Each step can also set a per-step "timeout" (in seconds):
+
+          {"wait_for_text": "Slow", "timeout": 60}
 
         Each step is an object with a single action key:
 
           {"start": "<command>"}
-              Start a TUI process in a PTY.
+              Start a TUI process in a PTY. Environment variables can be
+              passed via "env": {"FOO": "bar", "BAZ": "qux"}.
 
           {"send": "<text>"}
               Send text to the TUI. Use "\\n" for Enter.

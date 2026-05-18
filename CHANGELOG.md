@@ -1,8 +1,15 @@
 # CHANGELOG
 
+## 0.2.3
+
+- `have_exit_status` RSpec matcher and `exitstatus` drive command — exit code testing on all three levels (JSON + RSpec + drive)
+- `env` in start step — inject environment variables per test run
+- Per-step `timeout` override
+- `before_all` / `after_all` hooks for setup and teardown steps
+
 ## 0.2.2
 
-- `wait_for_exit` and `assert_exit` test steps — test process exit codes
+- `wait_for_exit` and `assert_exit` JSON test steps — test process exit codes
 
 ## 0.2.1
 

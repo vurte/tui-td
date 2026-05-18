@@ -120,6 +120,7 @@ Interactive commands (drive mode):
   key <name>         Send keystroke (enter, tab, escape, up, down, left, right,
                      backspace, ctrl_c, ctrl_d)
   <text>             Send text to the TUI
+  exitstatus         Show process exit status (nil if running)
   exit               Quit drive mode
 
 Global options:

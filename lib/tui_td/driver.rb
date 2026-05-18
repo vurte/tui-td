@@ -19,12 +19,13 @@ module TUITD
   class Driver
     attr_reader :command, :state
 
-    def initialize(command, rows: 40, cols: 120, timeout: 30, chdir: nil)
+    def initialize(command, rows: 40, cols: 120, timeout: 30, chdir: nil, env: {})
       @command = command
       @rows = rows
       @cols = cols
       @timeout = timeout
       @chdir = chdir
+      @env = env
       @state = nil
       @stdin = nil
       @stdout = nil
@@ -37,7 +38,7 @@ module TUITD
 
     # Start the TUI application in a PTY
     def start
-      env = { "TERM" => "xterm-256color", "COLUMNS" => @cols.to_s, "LINES" => @rows.to_s }
+      env = { "TERM" => "xterm-256color", "COLUMNS" => @cols.to_s, "LINES" => @rows.to_s }.merge(@env.transform_keys(&:to_s))
       spawn_opts = {}
       spawn_opts[:chdir] = @chdir if @chdir
 
