@@ -292,9 +292,13 @@ tui-td test examples/echo_test.json
 | `wait_for_text` | `"text"` | Wait until text appears |
 | `wait_for_stable` | — | Wait until output is stable |
 | `assert_text` | `"text"` | Assert that text exists on screen |
+| `assert_not_text` | `"text"` | Assert that text does NOT exist on screen |
+| `assert_regex` | `"pattern"` | Assert that regex pattern matches (e.g. `"error\|fail"`) |
 | `assert_fg` | `[row, col], "is": "color"` | Assert foreground color |
 | `assert_bg` | `[row, col], "is": "color"` | Assert background color |
 | `assert_style` | `[row, col], "bold": true` | Assert cell style (bold, italic, underline) |
+| `wait_for_exit` | — | Wait until the process exits |
+| `assert_exit` | `N` | Assert the process exit code equals N |
 | `screenshot` | `"path"` | Save PNG screenshot |
 | `html` | `"path"` | Save HTML render for browser viewing |
 | `close` | — | Close the TUI |

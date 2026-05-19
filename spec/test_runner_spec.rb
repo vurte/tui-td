@@ -238,6 +238,92 @@ RSpec.describe TUITD::TestRunner do
     end
   end
 
+  describe "assert_not_text" do
+    it "passes when text is absent" do
+      plan = {
+        name: "not text pass",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo hello" },
+          { wait_for_stable: true },
+          { assert_not_text: "NONEXISTENT" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "fails when text is present" do
+      plan = {
+        name: "not text fail",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo hello world" },
+          { wait_for_stable: true },
+          { assert_not_text: "hello" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+      expect(result[:results][2][:message]).to include("should not be")
+    end
+  end
+
+  describe "assert_regex" do
+    it "passes when regex matches" do
+      plan = {
+        name: "regex pass",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo error: something failed" },
+          { wait_for_stable: true },
+          { assert_regex: "error|fail|warn" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "fails when regex does not match" do
+      plan = {
+        name: "regex fail",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo all good" },
+          { wait_for_stable: true },
+          { assert_regex: "error|fail" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+      expect(result[:results][2][:message]).to include("did not match")
+    end
+
+    it "matches regex special characters" do
+      plan = {
+        name: "regex special",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo HTTP 500" },
+          { wait_for_stable: true },
+          { assert_regex: "\\d{3}" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+  end
+
   describe "exit code" do
     it "waits for process exit and asserts exit status 0" do
       plan = {
