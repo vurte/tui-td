@@ -101,6 +101,25 @@ module TUITD
                   Result.new(step: action, passed: false, message: "Text NOT found: #{value}")
                 end
 
+              when "assert_not_text"
+                ensure_driver!(driver)
+                state = State.new(driver.state_data)
+                if state.find_text(value.to_s).any?
+                  Result.new(step: action, passed: false, message: "Text found but should not be: #{value}")
+                else
+                  Result.new(step: action, passed: true, message: "Text not found: #{value}")
+                end
+
+              when "assert_regex"
+                ensure_driver!(driver)
+                state = State.new(driver.state_data)
+                pattern = Regexp.new(value.to_s)
+                if state.find_text(pattern).any?
+                  Result.new(step: action, passed: true, message: "Regex matched: #{value}")
+                else
+                  Result.new(step: action, passed: false, message: "Regex did not match: #{value}")
+                end
+
               when "assert_fg"
                 ensure_driver!(driver)
                 row, col = coords(step)

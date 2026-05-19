@@ -23,6 +23,17 @@ module TUITD
       failure_message_when_negated { |state| "expected terminal NOT to contain #{expected.inspect}" }
     end
 
+    RSpec::Matchers.define :have_regex do |pattern|
+      match do |state|
+        @regex = pattern.is_a?(Regexp) ? pattern : Regexp.new(pattern.to_s)
+        state.find_text(@regex).any?
+      end
+
+      description { "match regex #{pattern.inspect}" }
+      failure_message { |state| "expected terminal to match #{pattern.inspect}" }
+      failure_message_when_negated { |state| "expected terminal NOT to match #{pattern.inspect}" }
+    end
+
     RSpec::Matchers.define :have_fg do |expected|
       chain(:at) { |row, col| @row, @col = row, col }
 

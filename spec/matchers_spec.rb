@@ -39,6 +39,36 @@ RSpec.describe TUITD::Matchers do
       state = make_state(grid: grid)
       expect(state).to have_text("World")
     end
+
+    it "negates with not_to" do
+      grid = make_grid(1, 10)
+      "Hello".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).not_to have_text("Error")
+    end
+  end
+
+  describe "have_regex" do
+    it "passes when regex matches" do
+      grid = make_grid(1, 20)
+      "error: timeout".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_regex(/error|fail/)
+    end
+
+    it "accepts a string pattern" do
+      grid = make_grid(1, 20)
+      "error: timeout".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_regex("error|fail")
+    end
+
+    it "fails when regex does not match" do
+      grid = make_grid(1, 10)
+      "all good".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect { expect(state).to have_regex(/error/) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
   end
 
   describe "have_fg" do

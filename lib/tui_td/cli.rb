@@ -366,6 +366,13 @@ module TUITD
           {"assert_text": "<substring>"}
               Fail if the text is not found in the current state.
 
+          {"assert_not_text": "<substring>"}
+              Fail if the text IS found in the current state.
+
+          {"assert_regex": "<pattern>"}
+              Fail if the regex pattern does not match anywhere.
+              Pattern syntax is Ruby regex (e.g. "error|fail|warn").
+
           {"assert_fg": [row, col], "is": "<color>"}
               Assert foreground color at cell. Colors: "default",
               named ANSI (red, green, blue, cyan, ...), "bright_*",
@@ -432,6 +439,13 @@ module TUITD
         have_text(expected)
             Passes if expected text appears anywhere in the terminal state.
             Usage: expect(state).to have_text("Hello")
+            Negate: expect(state).not_to have_text("Error")
+
+        have_regex(pattern)
+            Passes if the regex pattern matches anywhere. Accepts a Regexp
+            or a string (parsed as Ruby regex).
+            Usage: expect(state).to have_regex(/error|fail/)
+            Usage: expect(state).to have_regex("\\d{3}")
 
         have_fg(expected).at(row, col)
             Assert foreground color at [row, col] matches expected.

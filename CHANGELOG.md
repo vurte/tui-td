@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## 0.2.4
+
+- `assert_regex` JSON test step — match terminal output against a Ruby regex
+- `assert_not_text` JSON test step — fail if text IS present (inverse of assert_text)
+- `have_regex` RSpec matcher — regex assertions in spec files
+- `have_text` negation in RSpec: `expect(state).not_to have_text("Error")`
+- README step reference table updated (all 13 step types listed)
+
 ## 0.2.3
 
 - `have_exit_status` RSpec matcher and `exitstatus` drive command — exit code testing on all three levels (JSON + RSpec + drive)
