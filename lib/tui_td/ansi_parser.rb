@@ -83,15 +83,13 @@ module TUITD
     # Parse raw terminal output into a structured state Hash
     def self.parse(raw, rows = 40, cols = 120)
       grid = Array.new(rows) do
-        Array.new(cols) do
-          { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false }
-        end
+        Array.new(cols) { default_cell.dup }
       end
 
       cursor = { row: 0, col: 0 }
       attrs = { fg: "default", bg: "default", bold: false, italic: false, underline: false }
       saved_cursor = nil
-      scroll_region = nil
+      scroll_region = { top: 0, bottom: rows - 1 }
       pending_dsr = false
 
       # Strip everything before the last full clear (if any)
@@ -103,11 +101,12 @@ module TUITD
         if processed[i] == "\e" && processed[i + 1] == "["
           # Find end of CSI sequence
           j = i + 2
-          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fhlmnR]/)
+          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fhlmnRrsu]/)
           seq = processed[i..j]
 
-          dsr = _apply_csi(seq, cursor, attrs, grid, rows, cols)
+          dsr, new_saved = _apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
           pending_dsr ||= dsr
+          saved_cursor = new_saved if new_saved
 
           i = j + 1
         elsif processed[i] == "\n" || processed[i] == "\r\n"
@@ -128,11 +127,20 @@ module TUITD
           # Bell — ignore
           i += 1
         elsif processed[i] == "\e"
-          # Skip escape sequences:
-          #   CSI: \e[... (already handled above)
-          #   ISO 2022 charset: \e( B  \e) 0  etc. (3 chars total)
-          #   Other: just the ESC
-          if processed[i + 1] && processed[i + 1].match?(/[()*+\-.\/]/)
+          # Handle non-CSI escape sequences
+          if processed[i + 1] == "7"
+            # DECSC — Save Cursor
+            saved_cursor = { row: cursor[:row], col: cursor[:col] }
+            i += 2
+          elsif processed[i + 1] == "8"
+            # DECRC — Restore Cursor
+            if saved_cursor
+              cursor[:row] = saved_cursor[:row]
+              cursor[:col] = saved_cursor[:col]
+            end
+            i += 2
+          elsif processed[i + 1] && processed[i + 1].match?(/[()*+\-.\/]/)
+            # ISO 2022 charset: \e( B  \e) 0  etc. (3 chars total)
             i += 3
           else
             i += 1
@@ -151,14 +159,22 @@ module TUITD
           i += 1
         end
 
-        # Handle scrolling
-        if cursor[:row] >= rows
-          scroll_lines = cursor[:row] - rows + 1
-          grid.shift(scroll_lines)
-          scroll_lines.times do
-            grid << Array.new(cols) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
+        # Handle scrolling within the defined scroll region
+        region_top = scroll_region[:top]
+        region_bottom = scroll_region[:bottom]
+
+        if cursor[:row] > region_bottom
+          scroll_lines = [cursor[:row] - region_bottom, rows].min
+          # Shift lines within the scroll region up
+          (region_top..(region_bottom - scroll_lines)).each do |ri|
+            src = ri + scroll_lines
+            grid[ri] = src <= region_bottom ? grid[src] : Array.new(cols) { default_cell.dup }
           end
-          cursor[:row] = rows - 1
+          # Fill bottom of scroll region with blank lines
+          ((region_bottom - scroll_lines + 1)..region_bottom).each do |ri|
+            grid[ri] = Array.new(cols) { default_cell.dup }
+          end
+          cursor[:row] = region_bottom
         end
       end
 
@@ -211,14 +227,16 @@ module TUITD
       out
     end
 
-    def self._apply_csi(seq, cursor, attrs, grid, rows, cols)
+    def self._apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
       # Strip leading escape char if present
       cleaned = seq.sub(/^\e/, "")
-      match = cleaned.match(/^\[([\d;]*)([A-HJ-KP-SX@`fhlmnR])$/)
-      return unless match
+      match = cleaned.match(/^\[([\d;]*)([A-HJ-KP-SX@`fhlmnRrsu])$/)
+      return [false, nil] unless match
 
       params = match[1].split(";").map(&:to_i)
       command = match[2]
+
+      new_saved = nil
 
       case command
       when "m"
@@ -270,14 +288,36 @@ module TUITD
           next unless cursor[:row] < rows && cursor[:col] + i < cols
           grid[cursor[:row]][cursor[:col] + i][:char] = " "
         end
-      when "h", "l" # DEC private mode set/reset — skip (alternate screen, cursor show/hide, etc.)
+      when "s" # DECSC — Save Cursor (CSI variant)
+        new_saved = { row: cursor[:row], col: cursor[:col] }
+      when "u" # DECRC — Restore Cursor (CSI variant)
+        if saved_cursor
+          cursor[:row] = saved_cursor[:row]
+          cursor[:col] = saved_cursor[:col]
+        end
+      when "r" # DECSTBM — Set Scroll Region
+        top = (params[0] || 1) - 1
+        bottom = (params[1] || rows) - 1
+        top = top.clamp(0, rows - 1)
+        bottom = bottom.clamp(0, rows - 1)
+        if top < bottom
+          scroll_region[:top] = top
+          scroll_region[:bottom] = bottom
+        else
+          scroll_region[:top] = 0
+          scroll_region[:bottom] = rows - 1
+        end
+        cursor[:row] = 0
+        cursor[:col] = 0
+      when "h", "l" # DEC private mode set/reset — skip
         nil
       when "n" # DSR — Device Status Report request
-        # \e[6n = request cursor position → caller must respond with \e[row;colR
-        return params[0] == 6
+        return [params[0] == 6, nil]
       when "R" # DSR response (from terminal side) or CPR — ignore
         nil
       end
+
+      [false, new_saved]
     end
 
     def self._apply_sgr(params, attrs)
@@ -397,19 +437,23 @@ module TUITD
     def self._color_code(name, prefix)
       case name
       when "default" then nil
-      when /^(bright_)?(.+)$/
-        base_name = $2
-        index = SGR_16_TO_NAME.key(base_name)
-        index += 8 if $1 && index && index < 8
-        index ? "#{prefix};5;#{index}" : nil
       when /^#([0-9a-fA-F]{6})$/
         r = $1[0..1].to_i(16)
         g = $1[2..3].to_i(16)
         b = $1[4..5].to_i(16)
         "#{prefix};2;#{r};#{g};#{b}"
+      when /^(bright_)?(.+)$/
+        base_name = $2
+        index = SGR_16_TO_NAME.key(base_name)
+        index += 8 if $1 && index && index < 8
+        index ? "#{prefix};5;#{index}" : nil
       else
         nil
       end
+    end
+
+    def self.default_cell
+      { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false }
     end
 
     # Extract a single UTF-8 character at position i in a binary string.

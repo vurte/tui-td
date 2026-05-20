@@ -37,6 +37,12 @@ module TUITD
       @plan[:before_all] = @plan[:before_all]&.map { |s| s.transform_keys(&:to_sym) }
       @plan[:after_all] = @plan[:after_all]&.map { |s| s.transform_keys(&:to_sym) }
       @on_step = on_step
+    rescue JSON::ParserError => e
+      raise Error, "Invalid JSON: #{e.message}"
+      @plan[:steps] = @plan[:steps].map { |s| s.transform_keys(&:to_sym) }
+      @plan[:before_all] = @plan[:before_all]&.map { |s| s.transform_keys(&:to_sym) }
+      @plan[:after_all] = @plan[:after_all]&.map { |s| s.transform_keys(&:to_sym) }
+      @on_step = on_step
     end
 
     def run
@@ -88,140 +94,97 @@ module TUITD
                   Result.new(step: action, passed: true, message: "Found: #{value}")
 
                 when "wait_for_stable"
-                ensure_driver!(driver)
-                driver.wait_for_stable
-                Result.new(step: action, passed: true, message: "Stable")
+                  ensure_driver!(driver)
+                  driver.wait_for_stable
+                  Result.new(step: action, passed: true, message: "Stable")
 
-              when "assert_text"
-                ensure_driver!(driver)
-                state = State.new(driver.state_data)
-                if state.find_text(value.to_s).any?
-                  Result.new(step: action, passed: true, message: "Text found: #{value}")
+                when "assert_text", "assert_not_text", "assert_regex"
+                  check_text(driver, value, action)
+
+                when "assert_fg"
+                  check_color(driver, step, :fg)
+
+                when "assert_bg"
+                  check_color(driver, step, :bg)
+
+                when "assert_style"
+                  ensure_driver!(driver)
+                  row, col = coords(step)
+                  state = State.new(driver.state_data)
+                  actual = state.style_at(row, col)
+                  expected = {}
+                  expected[:bold] = step[:bold] unless step[:bold].nil?
+                  expected[:italic] = step[:italic] unless step[:italic].nil?
+                  expected[:underline] = step[:underline] unless step[:underline].nil?
+                  match = expected.all? { |k, v| actual[k] == v }
+                  if match
+                    Result.new(step: action, passed: true, message: "Style at [#{row},#{col}] matches #{expected}")
+                  else
+                    Result.new(step: action, passed: false, message: "Style at [#{row},#{col}] is #{actual}, expected #{expected}")
+                  end
+
+                when "screenshot"
+                  ensure_driver!(driver)
+                  path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.png"
+                  driver.screenshot(path)
+                  Result.new(step: action, passed: true, message: "Saved: #{path}")
+
+                when "html"
+                  ensure_driver!(driver)
+                  path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.html"
+                  HtmlRenderer.new(driver.state_data).render(path)
+                  Result.new(step: action, passed: true, message: "Saved: #{path}")
+
+                when "wait_for_exit"
+                  ensure_driver!(driver)
+                  driver.wait_for_exit
+                  status = driver.exitstatus
+                  Result.new(step: action, passed: true, message: "Exited with status #{status}")
+
+                when "assert_exit"
+                  ensure_driver!(driver)
+                  expected = value.to_s.to_i
+                  actual = driver.exitstatus
+                  if actual == expected
+                    Result.new(step: action, passed: true, message: "Exit status #{expected} matches")
+                  else
+                    Result.new(step: action, passed: false, message: "Exit status #{actual}, expected #{expected}")
+                  end
+
+                when "close"
+                  driver&.close
+                  driver = nil
+                  Result.new(step: action, passed: true, message: "Closed")
+
                 else
-                  Result.new(step: action, passed: false, message: "Text NOT found: #{value}")
+                  Result.new(step: action, passed: false, message: "Unknown action: #{action}")
                 end
 
-              when "assert_not_text"
-                ensure_driver!(driver)
-                state = State.new(driver.state_data)
-                if state.find_text(value.to_s).any?
-                  Result.new(step: action, passed: false, message: "Text found but should not be: #{value}")
-                else
-                  Result.new(step: action, passed: true, message: "Text not found: #{value}")
-                end
-
-              when "assert_regex"
-                ensure_driver!(driver)
-                state = State.new(driver.state_data)
-                pattern = Regexp.new(value.to_s)
-                if state.find_text(pattern).any?
-                  Result.new(step: action, passed: true, message: "Regex matched: #{value}")
-                else
-                  Result.new(step: action, passed: false, message: "Regex did not match: #{value}")
-                end
-
-              when "assert_fg"
-                ensure_driver!(driver)
-                row, col = coords(step)
-                expected = step[:is] || step["is"]
-                state = State.new(driver.state_data)
-                actual = state.foreground_at(row, col)
-                if actual == expected
-                  Result.new(step: action, passed: true, message: "FG at [#{row},#{col}] is #{expected}")
-                else
-                  Result.new(step: action, passed: false, message: "FG at [#{row},#{col}] is #{actual}, expected #{expected}")
-                end
-
-              when "assert_bg"
-                ensure_driver!(driver)
-                row, col = coords(step)
-                expected = step[:is] || step["is"]
-                state = State.new(driver.state_data)
-                actual = state.background_at(row, col)
-                if actual == expected
-                  Result.new(step: action, passed: true, message: "BG at [#{row},#{col}] is #{expected}")
-                else
-                  Result.new(step: action, passed: false, message: "BG at [#{row},#{col}] is #{actual}, expected #{expected}")
-                end
-
-              when "assert_style"
-                ensure_driver!(driver)
-                row, col = coords(step)
-                state = State.new(driver.state_data)
-                actual = state.style_at(row, col)
-                expected = {}
-                expected[:bold] = step[:bold] unless step[:bold].nil?
-                expected[:italic] = step[:italic] unless step[:italic].nil?
-                expected[:underline] = step[:underline] unless step[:underline].nil?
-                match = expected.all? { |k, v| actual[k] == v }
-                if match
-                  Result.new(step: action, passed: true, message: "Style at [#{row},#{col}] matches #{expected}")
-                else
-                  Result.new(step: action, passed: false, message: "Style at [#{row},#{col}] is #{actual}, expected #{expected}")
-                end
-
-              when "screenshot"
-                ensure_driver!(driver)
-                path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.png"
-                driver.screenshot(path)
-                Result.new(step: action, passed: true, message: "Saved: #{path}")
-
-              when "html"
-                ensure_driver!(driver)
-                path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.html"
-                HtmlRenderer.new(driver.state_data).render(path)
-                Result.new(step: action, passed: true, message: "Saved: #{path}")
-
-              when "wait_for_exit"
-                ensure_driver!(driver)
-                driver.wait_for_exit
-                status = driver.exitstatus
-                Result.new(step: action, passed: true, message: "Exited with status #{status}")
-
-              when "assert_exit"
-                ensure_driver!(driver)
-                expected = value.to_s.to_i
-                actual = driver.exitstatus
-                if actual == expected
-                  Result.new(step: action, passed: true, message: "Exit status #{expected} matches")
-                else
-                  Result.new(step: action, passed: false, message: "Exit status #{actual}, expected #{expected}")
-                end
-
-              when "close"
-                driver&.close
-                driver = nil
-                Result.new(step: action, passed: true, message: "Closed")
-
-              else
-                Result.new(step: action, passed: false, message: "Unknown action: #{action}")
-              end
-
-        rescue StandardError => e
-          r = Result.new(step: action, passed: false, message: "#{e.class}: #{e.message}")
-        end
-
-        all_results << r
-        all_passed &&= r.passed
-
-        if @on_step
-          state_data = nil
-          begin
-            state_data = driver.state_data if driver
-          rescue StandardError
-            # ignore — state retrieval is best-effort
+          rescue StandardError => e
+            r = Result.new(step: action, passed: false, message: "#{e.class}: #{e.message}")
           end
-          @on_step.call(
-            index: all_results.size - 1,
-            total: total_steps,
-            action: action,
-            value: value,
-            result: r,
-            driver: driver,
-            state_data: state_data
-          )
+
+          all_results << r
+          all_passed &&= r.passed
+
+          if @on_step
+            state_data = nil
+            begin
+              state_data = driver.state_data if driver
+            rescue StandardError
+              # ignore — state retrieval is best-effort
+            end
+            @on_step.call(
+              index: all_results.size - 1,
+              total: total_steps,
+              action: action,
+              value: value,
+              result: r,
+              driver: driver,
+              state_data: state_data
+            )
+          end
         end
-      end
       end
 
       driver&.close
@@ -241,10 +204,65 @@ module TUITD
 
     def coords(step)
       pos = step[:assert_fg] || step[:assert_bg] || step[:assert_style]
-      pos = value if pos.nil? && (value = step.values.first).is_a?(Array)
       row = pos.is_a?(Array) ? pos[0] : (pos[:row] || pos["row"] || 0)
       col = pos.is_a?(Array) ? pos[1] : (pos[:col] || pos["col"] || 0)
       [row, col]
+    end
+
+    def check_text(driver, value, action)
+      ensure_driver!(driver)
+      state = State.new(driver.state_data)
+      text = value.to_s
+
+      if action == "assert_regex"
+        begin
+          pattern = Regexp.new(text)
+        rescue RegexpError => e
+          return Result.new(step: action, passed: false, message: "Invalid regex: #{e.message}")
+        end
+      else
+        pattern = text
+      end
+
+      found = state.find_text(pattern).any?
+
+      case action
+      when "assert_text"
+        if found
+          Result.new(step: action, passed: true, message: "Text found: #{value}")
+        else
+          Result.new(step: action, passed: false, message: "Text NOT found: #{value}")
+        end
+      when "assert_not_text"
+        if found
+          Result.new(step: action, passed: false, message: "Text found but should not be: #{value}")
+        else
+          Result.new(step: action, passed: true, message: "Text not found: #{value}")
+        end
+      when "assert_regex"
+        if found
+          Result.new(step: action, passed: true, message: "Regex matched: #{value}")
+        else
+          Result.new(step: action, passed: false, message: "Regex did not match: #{value}")
+        end
+      else
+        Result.new(step: action, passed: false, message: "Unknown text check: #{action}")
+      end
+    end
+
+    def check_color(driver, step, property)
+      ensure_driver!(driver)
+      row, col = coords(step)
+      expected = step[:is] || step["is"]
+      state = State.new(driver.state_data)
+      label = property == :fg ? "FG" : "BG"
+      actual = property == :fg ? state.foreground_at(row, col) : state.background_at(row, col)
+
+      if actual == expected
+        Result.new(step: step.keys.first.to_s, passed: true, message: "#{label} at [#{row},#{col}] is #{expected}")
+      else
+        Result.new(step: step.keys.first.to_s, passed: false, message: "#{label} at [#{row},#{col}] is #{actual}, expected #{expected}")
+      end
     end
   end
 end

@@ -90,20 +90,20 @@ Interactive commands (drive mode):
   exit               Quit drive mode
 
 Global options:
-  -r, --rows N          Terminal rows (default: 40)
-  -c, --cols N          Terminal cols (default: 120)
-  -t, --timeout N       Timeout in seconds (default: 30)
-  -C, --chdir PATH      Working directory for the command
-  --screenshot PATH     Save PNG screenshot
-  --html PATH           Save HTML render for browser viewing
-  --json                Output state as compact JSON (includes raw ANSI)
-  --pretty              Output state as pretty JSON
-  --text                Output state as plain text table
-  -v, --verbose         Show each test step as it runs
-  -l, --live            Show terminal state after each test step (screen-refresh)
-  -s, --step            Pause after each test step for confirmation
-  --version             Show version
-  -h, --help            Show complete reference
+    -r, --rows N                     Terminal rows (default: 40)
+    -c, --cols N                     Terminal cols (default: 120)
+    -t, --timeout SECONDS            Timeout in seconds (default: 30)
+    -C, --chdir PATH                 Working directory for the command
+        --screenshot PATH            Save screenshot (e.g., output.png)
+        --html PATH                  Save HTML render (e.g., output.html)
+        --json                       Output state as compact JSON
+        --pretty                     Output state as pretty JSON
+        --text                       Output state as plain text table
+    -v, --verbose                    Show each test step as it runs
+    -l, --live                       Show terminal state after each step (screen-refresh)
+    -s, --step                       Pause after each test step for confirmation
+        --version                    Show version
+    -h, --help                       Show help
 ```
 
 `tui-td --help` serves as the full CLI reference. `tui-td help test` shows all JSON test

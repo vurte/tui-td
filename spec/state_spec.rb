@@ -3,6 +3,23 @@
 require "spec_helper"
 
 RSpec.describe TUITD::State do
+  describe ".new" do
+    it "raises ArgumentError when :size key is missing" do
+      expect { described_class.new(rows: []) }.to raise_error(ArgumentError, /:size/)
+    end
+
+    it "raises ArgumentError when :rows key is missing" do
+      expect { described_class.new(size: { rows: 5, cols: 10 }) }.to raise_error(ArgumentError, /:rows/)
+    end
+
+    it "creates a valid state with correct data" do
+      data = { size: { rows: 2, cols: 10 }, rows: [[{ char: "X", fg: "default", bg: "default", bold: false, italic: false, underline: false }]], cursor: { row: 0, col: 0 } }
+      state = described_class.new(data)
+      expect(state.rows).to eq(2)
+      expect(state.cols).to eq(10)
+    end
+  end
+
   def make_grid(rows, cols, content = nil)
     Array.new(rows) do |ri|
       Array.new(cols) do |ci|
@@ -183,6 +200,64 @@ RSpec.describe TUITD::State do
       state = make_state(rows: 2, cols: 5, grid: grid)
       result = state.to_ai_json
       expect(result[:summary]).to include("cyan")
+    end
+
+    it "pluralizes 'styled rows' for multiple rows" do
+      grid = make_grid(3, 5)
+      grid[0][0][:char] = "A"; grid[0][0][:fg] = "red"
+      grid[1][0][:char] = "B"; grid[1][0][:bold] = true
+      state = make_state(rows: 3, cols: 5, grid: grid)
+      result = state.to_ai_json
+      expect(result[:summary]).to include("2 styled rows")
+    end
+
+    it "handles non-Hash cursor gracefully" do
+      data = {
+        size: { rows: 2, cols: 5 },
+        cursor: "invalid",
+        rows: make_grid(2, 5),
+      }
+      state = described_class.new(data)
+      result = state.to_ai_json
+      expect(result[:cursor]).to eq({})
+      expect(result[:summary]).to include("[0,0]")
+    end
+  end
+
+  describe "#find_text" do
+    it "finds multiple occurrences on the same row" do
+      grid = make_grid(1, 20)
+      "aXbXc".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(rows: 1, cols: 20, grid: grid)
+      results = state.find_text("X")
+      expect(results.size).to eq(2)
+      expect(results[0][:col]).to eq(1)
+      expect(results[1][:col]).to eq(3)
+    end
+
+    it "returns empty array when no match" do
+      grid = make_grid(1, 10)
+      "hello".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(rows: 1, cols: 10, grid: grid)
+      expect(state.find_text("MISSING")).to eq([])
+    end
+
+    it "finds text with Regexp pattern" do
+      grid = make_grid(1, 20)
+      "abc 123 def".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(rows: 1, cols: 20, grid: grid)
+      results = state.find_text(/\d{3}/)
+      expect(results.size).to eq(1)
+      expect(results[0][:text]).to eq(/\d{3}/)
+    end
+  end
+
+  describe "#foreground_at / #background_at / #style_at edge cases" do
+    it "returns nil for out-of-bounds color queries" do
+      state = make_state(rows: 2, cols: 5)
+      expect(state.foreground_at(10, 10)).to be_nil
+      expect(state.background_at(10, 10)).to be_nil
+      expect(state.style_at(10, 10)).to be_nil
     end
   end
 end

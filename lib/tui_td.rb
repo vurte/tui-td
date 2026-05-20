@@ -7,6 +7,7 @@ end
 require_relative "tui_td/version"
 require_relative "tui_td/driver"
 require_relative "tui_td/ansi_parser"
+require_relative "tui_td/ansi_utils"
 require_relative "tui_td/state"
 require_relative "tui_td/screenshot"
 require_relative "tui_td/html_renderer"
