@@ -1,10 +1,6 @@
 # TUI Test Drive
 
-*Like Playwright or Puppeteer, but built specifically for Terminal UIs and optimized for AI Coding Agents.*
-
 Testing framework for Terminal User Interfaces (TUIs) with MCP support.
-
-A Ruby library, but language-agnostic through its JSON test format and MCP server — use it from Python, JavaScript, Go, or any other programming language on Linux and macOS.
 
 **tui-td** lets you:
 1. Start a TUI application in a virtual terminal (PTY)
@@ -16,42 +12,13 @@ A Ruby library, but language-agnostic through its JSON test format and MCP serve
 
 ## Installation
 
-### 1. Install Ruby
-
-**rbenv (recommended):**
-
-```bash
-# macOS
-brew install rbenv ruby-build
-echo 'eval "$(rbenv init - zsh)"' >> ~/.zshrc
-
-# Linux
-git clone https://github.com/rbenv/rbenv.git ~/.rbenv
-git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
-echo 'eval "$(~/.rbenv/bin/rbenv init - bash)"' >> ~/.bashrc
-```
-
-Then install Ruby 3 and activate it:
-
-```bash
-rbenv install 3.4.1
-rbenv global 3.4.1
-ruby --version  # must show 3.0+
-```
-
-**Alternative — Homebrew (macOS):**
-
-```bash
-brew install ruby
-```
-
-### 2. Install tui-td
+Ruby 3.0+ is required. Install via [rbenv](https://github.com/rbenv/rbenv#installation) or `brew install ruby`.
 
 ```bash
 gem install tui-td
 ```
 
-### 3. Test
+Quick test:
 
 ```bash
 tui-td capture "echo Hello World"
