@@ -8,7 +8,6 @@ Testing framework for Terminal User Interfaces (TUIs) with MCP support.
 3. Send input — keystrokes, text, control sequences
 4. Analyze output — find text, check colors, detect cursor position
 5. Loop — adjust and retest without manual intervention
-6. Integrate — works with any language via JSON test files or MCP
 
 ## Installation
 
@@ -238,12 +237,18 @@ tui-td test examples/echo_test.json
   "rows": 24,
   "cols": 80,
   "timeout": 10,
+  "chdir": "/path/to/project",
+  "before_all": [
+    { "start": "my_tui_app", "env": { "DATABASE_URL": "test://" } }
+  ],
   "steps": [
-    { "start": "my_tui_app" },
     { "wait_for_text": "> " },
     { "send": "hello\n" },
     { "assert_text": "hello" },
-    { "assert_fg": [0, 0], "is": "cyan" },
+    { "assert_regex": "hello|world" },
+    { "assert_fg": [0, 0], "is": "cyan" }
+  ],
+  "after_all": [
     { "close": true }
   ]
 }
@@ -338,9 +343,11 @@ end
 | Matcher | Usage |
 |---------|-------|
 | `have_text("...")` | Assert text is present on screen |
+| `have_regex(/pattern/)` | Assert regex pattern matches anywhere |
 | `have_fg("color").at(row, col)` | Assert foreground color at position |
 | `have_bg("color").at(row, col)` | Assert background color at position |
 | `have_style.at(row, col).with(bold: true, ...)` | Assert cell style |
+| `have_exit_status(N)` | Assert the driver process exit status equals N |
 
 ## MCP Server — AI Integration
 
