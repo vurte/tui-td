@@ -324,6 +324,122 @@ RSpec.describe TUITD::TestRunner do
     end
   end
 
+  describe "html step" do
+    it "saves HTML output" do
+      path = "/tmp/tui_td_html_test_#{Process.pid}.html"
+      plan = {
+        name: "html test",
+        rows: 3,
+        cols: 10,
+        steps: [
+          { start: "echo html" },
+          { wait_for_stable: true },
+          { html: path },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+      expect(File.exist?(path)).to be true
+      expect(File.read(path)).to include("<!DOCTYPE html>")
+    ensure
+      File.delete(path) if path && File.exist?(path)
+    end
+  end
+
+  describe "hooks" do
+    it "runs before_all steps before main steps" do
+      plan = {
+        name: "hooks test",
+        rows: 5,
+        cols: 20,
+        timeout: 10,
+        before_all: [
+          { start: "echo setup" },
+          { wait_for_stable: true },
+          { assert_text: "setup" },
+        ],
+        steps: [
+          { assert_text: "setup" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      # Total results: 3 before_all + 2 main = 5
+      expect(result[:results].size).to eq(5)
+    end
+
+    it "runs after_all steps after main steps" do
+      plan = {
+        name: "after_all test",
+        rows: 5,
+        cols: 20,
+        timeout: 10,
+        steps: [
+          { start: "echo test" },
+          { wait_for_stable: true },
+          { assert_text: "test" },
+        ],
+        after_all: [
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      # Results include after_all step
+      expect(result[:results].last[:step]).to eq("close")
+    end
+  end
+
+  describe "invalid JSON" do
+    it "raises Error with descriptive message" do
+      expect { described_class.new("not json") }.to raise_error(TUITD::Error, /Invalid JSON/)
+    end
+  end
+
+  describe "invalid regex" do
+    it "returns fail result for malformed regex" do
+      plan = {
+        name: "bad regex",
+        rows: 5,
+        cols: 20,
+        steps: [
+          { start: "echo test" },
+          { wait_for_stable: true },
+          { assert_regex: "[[" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+      expect(result[:results][2][:message]).to include("Invalid regex")
+    end
+  end
+
+  describe "on_step callback" do
+    it "invokes callback for each step" do
+      steps_seen = []
+      on_step = ->(info) { steps_seen << info[:action] }
+
+      plan = {
+        name: "callback test",
+        rows: 5,
+        cols: 20,
+        timeout: 10,
+        steps: [
+          { start: "echo callback" },
+          { wait_for_stable: true },
+          { assert_text: "callback" },
+          { close: true },
+        ],
+      }
+      runner = described_class.new(plan, on_step: on_step)
+      runner.run
+      expect(steps_seen).to eq(%w[start wait_for_stable assert_text close])
+    end
+  end
+
   describe "exit code" do
     it "waits for process exit and asserts exit status 0" do
       plan = {

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.2.5
+
+- MCP smoke test expanded: 20 → 54 assertions, covers all 10 tools plus error paths (88% server coverage)
+- Extracted `ansi_utils.rb` — shared ANSI helpers used by parser, renderer, and screenshot
+- New RSpec specs for `ansi_utils`, enhanced specs for `test_runner`, `html_renderer`, `matchers`, `state`, `ansi_parser`
+
 ## 0.2.4
 
 - `assert_regex` JSON test step — match terminal output against a Ruby regex

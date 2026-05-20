@@ -7,6 +7,9 @@ module TUITD
     attr_reader :rows, :cols, :grid, :cursor
 
     def initialize(data)
+      raise ArgumentError, "State data must include :size key" unless data[:size]
+      raise ArgumentError, "State data must include :rows key" unless data[:rows]
+
       @rows = data[:size][:rows]
       @cols = data[:size][:cols]
       @grid = data[:rows]

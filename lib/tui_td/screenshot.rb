@@ -1,9 +1,12 @@
 # frozen_string_literal: true
 
 require "chunky_png"
+require_relative "ansi_utils"
 
 module TUITD
   class Screenshot
+    include ANSIUtils
+
     CELL_W = 8
     CELL_H = 16
 
@@ -106,39 +109,6 @@ module TUITD
     ].freeze
     private_constant :FONT
 
-    ANSI_RGB = {
-      "black"         => [0x00, 0x00, 0x00],
-      "red"           => [0xAA, 0x00, 0x00],
-      "green"         => [0x00, 0xAA, 0x00],
-      "yellow"        => [0xAA, 0x55, 0x00],
-      "blue"          => [0x00, 0x00, 0xAA],
-      "magenta"       => [0xAA, 0x00, 0xAA],
-      "cyan"          => [0x00, 0xAA, 0xAA],
-      "white"         => [0xAA, 0xAA, 0xAA],
-      "bright_black"  => [0x55, 0x55, 0x55],
-      "bright_red"    => [0xFF, 0x55, 0x55],
-      "bright_green"  => [0x55, 0xFF, 0x55],
-      "bright_yellow" => [0xFF, 0xFF, 0x55],
-      "bright_blue"   => [0x55, 0x55, 0xFF],
-      "bright_magenta"=> [0xFF, 0x55, 0xFF],
-      "bright_cyan"   => [0x55, 0xFF, 0xFF],
-      "bright_white"  => [0xFF, 0xFF, 0xFF],
-    }.freeze
-    private_constant :ANSI_RGB
-
-    CUBE = [0x00, 0x5F, 0x87, 0xAF, 0xD7, 0xFF].freeze
-    private_constant :CUBE
-
-    ANSI_INDEX = %w[
-      black red green yellow blue magenta cyan white
-      bright_black bright_red bright_green bright_yellow
-      bright_blue bright_magenta bright_cyan bright_white
-    ].freeze
-    private_constant :ANSI_INDEX
-
-    DEFAULT_FG = [0xC0, 0xC0, 0xC0].freeze
-    DEFAULT_BG = [0x00, 0x00, 0x00].freeze
-
     def initialize(state)
       @state = state
       @rows = _dig(state, :size, :rows) || 40
@@ -191,36 +161,6 @@ module TUITD
       draw_underline(image, px, py, CELL_W, fg_rgb) if underline
     end
 
-    def resolve_color(name, fallback)
-      case name
-      when "default"
-        fallback
-      when /^#([0-9a-fA-F]{6})$/
-        [$1[0..1].to_i(16), $1[2..3].to_i(16), $1[4..5].to_i(16)]
-      when /\Acolor(\d+)\z/
-        xterm_256($1.to_i)
-      when /\Abright_(.+)\z/
-        ANSI_RGB[name] || fallback
-      else
-        ANSI_RGB[name] || fallback
-      end
-    end
-
-    def xterm_256(index)
-      if index < 16
-        name = ANSI_INDEX[index]
-        ANSI_RGB[name] || DEFAULT_FG
-      elsif index < 232
-        r = CUBE[((index - 16) / 36) % 6]
-        g = CUBE[((index - 16) / 6) % 6]
-        b = CUBE[(index - 16) % 6]
-        [r, g, b]
-      else
-        v = 8 + (index - 232) * 10
-        [v, v, v]
-      end
-    end
-
     def fill_rect(image, x, y, w, h, rgb)
       color = ChunkyPNG::Color.rgb(*rgb)
       h.times do |dy|
@@ -260,12 +200,5 @@ module TUITD
       w.times { |dx| image[px + dx, y] = color }
     end
 
-    def _dig(hash, *keys)
-      keys.each do |k|
-        return nil unless hash
-        hash = hash[k] || hash[k.to_s]
-      end
-      hash
-    end
   end
 end

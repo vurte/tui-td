@@ -86,6 +86,109 @@ RSpec.describe TUITD::HtmlRenderer do
       expect(html).to include("font-weight:bold")
       expect(html).to include("font-style:italic")
     end
+
+    it "renders background color" do
+      state = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          [{ char: "X", fg: "default", bg: "blue", bold: false, italic: false, underline: false }],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("background-color:#0000aa")
+    end
+
+    it "renders underline" do
+      state = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          [{ char: "U", fg: "default", bg: "default", bold: false, italic: false, underline: true }],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("text-decoration:underline")
+    end
+
+    it "highlights cursor cell" do
+      state = {
+        size: { rows: 2, cols: 3 },
+        cursor: { row: 0, col: 1 },
+        rows: [
+          [
+            { char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: "B", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: "C", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          ],
+          [
+            { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          ],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("cursor-cell")
+    end
+
+    it "handles empty rows" do
+      state = {
+        size: { rows: 2, cols: 2 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          [],
+          nil,
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("<!DOCTYPE html>")
+      expect(html).to include('<span class="line">')
+    end
+
+    it "escapes & and double-quote in HTML" do
+      state = {
+        size: { rows: 1, cols: 4 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          [
+            { char: "&", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: '"', fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: "<", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+            { char: ">", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          ],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("&amp;")
+      expect(html).to include("&quot;")
+      expect(html).to include("&lt;")
+      expect(html).to include("&gt;")
+    end
+
+    it "renders 256-color foreground" do
+      state = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          [{ char: "C", fg: "color82", bg: "default", bold: false, italic: false, underline: false }],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("color:#")
+    end
+
+    it "renders state with string keys" do
+      state = {
+        "size" => { "rows" => 1, "cols" => 1 },
+        "cursor" => { "row" => 0, "col" => 0 },
+        "rows" => [
+          [{ "char" => "S", "fg" => "red", "bg" => "default", "bold" => false, "italic" => false, "underline" => false }],
+        ],
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("#aa0000")
+    end
   end
 
   describe "#render" do

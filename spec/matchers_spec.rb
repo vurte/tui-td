@@ -87,6 +87,14 @@ RSpec.describe TUITD::Matchers do
       state = make_state(grid: grid)
       expect { expect(state).to have_fg("red").at(0, 0) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
     end
+
+    it "negates with not_to" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "A"
+      grid[0][0][:fg] = "green"
+      state = make_state(grid: grid)
+      expect(state).not_to have_fg("red").at(0, 0)
+    end
   end
 
   describe "have_bg" do
@@ -96,6 +104,22 @@ RSpec.describe TUITD::Matchers do
       grid[0][0][:bg] = "blue"
       state = make_state(grid: grid)
       expect(state).to have_bg("blue").at(0, 0)
+    end
+
+    it "fails when background differs" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "X"
+      grid[0][0][:bg] = "green"
+      state = make_state(grid: grid)
+      expect { expect(state).to have_bg("blue").at(0, 0) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "negates with not_to" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "X"
+      grid[0][0][:bg] = "green"
+      state = make_state(grid: grid)
+      expect(state).not_to have_bg("blue").at(0, 0)
     end
   end
 
@@ -117,11 +141,26 @@ RSpec.describe TUITD::Matchers do
       expect(state).to have_style.at(0, 0).with(bold: true, underline: true)
     end
 
+    it "passes when italic is true" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "I"
+      grid[0][0][:italic] = true
+      state = make_state(grid: grid)
+      expect(state).to have_style.at(0, 0).with(italic: true)
+    end
+
     it "fails when style differs" do
       grid = make_grid(1, 5)
       grid[0][0][:char] = "N"
       state = make_state(grid: grid)
       expect { expect(state).to have_style.at(0, 0).with(bold: true) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "negates with not_to" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "N"
+      state = make_state(grid: grid)
+      expect(state).not_to have_style.at(0, 0).with(bold: true)
     end
   end
 
