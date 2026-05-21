@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## 0.2.6
+
+- ISO-2022 charset switching support (G0/G1 designators, Shift Out/In) with DEC Special Character & Line Drawing mapping
+- SGR mouse reporting mode parsing (1000, 1002, 1003, 1006)
+- Mouse reporting and cursor visibility/style reconstruction in build_frame
+- Fixed `state_data` in `driver.rb` to unconditionally refresh terminal state instead of returning stale cache
+- New `cursor_visible`, `cursor_style`, `mouse_mode`, `mouse_format` attributes on `State`
+- HTML and screenshot styling for new cursor/mouse attributes
+
 ## 0.2.5
 
 - MCP smoke test expanded: 20 → 54 assertions, covers all 10 tools plus error paths (88% server coverage)
