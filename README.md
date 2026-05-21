@@ -417,10 +417,14 @@ Top-level structure returned by `state_data` / `--json`:
 
 ```json
 {
-  "size":   {"rows": 40, "cols": 120},
-  "cursor": {"row": 5, "col": 12},
-  "rows":   [[{"char": "A", "fg": "cyan", ...}]],
-  "raw":    "\e[31mred\e[0m\n..."
+  "size":            {"rows": 40, "cols": 120},
+  "cursor":          {"row": 5, "col": 12},
+  "cursor_visible":  true,
+  "cursor_style":    "block",
+  "mouse_mode":      null,
+  "mouse_format":    null,
+  "rows":            [[{"char": "A", "fg": "cyan", ...}]],
+  "raw":             "\e[31mred\e[0m\n..."
 }
 ```
 
