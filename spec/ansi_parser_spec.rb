@@ -121,16 +121,16 @@ RSpec.describe TUITD::ANSIParser do
       expect(line).to start_with("beforeafter")
     end
 
-    it "skips alternate screen buffer \\e[?1049h" do
+    it "supports alternate screen buffer switching \\e[?1049h" do
       state = described_class.parse("vim\e[?1049hcontent", 10, 40)
       line = state[:rows][0].map { |c| c[:char] }.join
-      expect(line).to start_with("vimcontent")
+      expect(line).to start_with("content")
     end
 
-    it "skips alternate screen buffer exit \\e[?1049l" do
-      state = described_class.parse("leaving\e[?1049lback", 10, 40)
+    it "restores normal screen buffer on \\e[?1049l" do
+      state = described_class.parse("main\e[?1049halt\e[?1049lrestored", 10, 40)
       line = state[:rows][0].map { |c| c[:char] }.join
-      expect(line).to start_with("leavingback")
+      expect(line).to start_with("mainrestored")
     end
 
     # ---- Cursor movement ----
@@ -382,6 +382,87 @@ RSpec.describe TUITD::ANSIParser do
 
     it "returns nil for default" do
       expect(described_class._color_code("default", "38")).to be_nil
+    end
+  end
+
+  describe "advanced ANSI features" do
+    it "parses SGR blink sequences" do
+      state = described_class.parse("normal \e[5mblinking\e[25m normal_again", 5, 40)
+      row = state[:rows][0]
+      expect(row[0][:blink]).to be false
+      expect(row[7][:blink]).to be true
+      expect(row[15][:blink]).to be false
+    end
+
+    it "handles cursor visibility sequences" do
+      state1 = described_class.parse("\e[?25l", 5, 40)
+      expect(state1[:cursor_visible]).to be false
+      expect(state1[:cursor][:visible]).to be false
+
+      state2 = described_class.parse("\e[?25h", 5, 40)
+      expect(state2[:cursor_visible]).to be true
+      expect(state2[:cursor][:visible]).to be true
+    end
+
+    it "handles DECSCUSR cursor shape sequences" do
+      state = described_class.parse("\e[4 q", 5, 40) # Underline
+      expect(state[:cursor_style]).to eq(4)
+      expect(state[:cursor][:style]).to eq(4)
+    end
+
+    it "separates alternate screen and normal screen buffers" do
+      # 1. Switch to alt screen (1047h), write something, then switch back (1047l)
+      state = described_class.parse("normal\e[?1047halt\e[?1047lnormal2", 5, 40)
+      line = state[:rows][0].map { |c| c[:char] }.join.strip
+      expect(line).to eq("normalnormal2")
+
+      # 2. Stays in alt screen buffer
+      state_alt = described_class.parse("normal\e[?1047halt", 5, 40)
+      line_alt = state_alt[:rows][0].map { |c| c[:char] }.join.strip
+      expect(line_alt).to eq("alt")
+    end
+
+    it "supports DEC Special Character and Line Drawing mapping via ISO-2022" do
+      # G0 set to DEC: \e(0. 'q' -> '─', 'x' -> '│'.
+      state1 = described_class.parse("\e(0qx\e(Bqx", 5, 40)
+      line1 = state1[:rows][0][0..3].map { |c| c[:char] }.join
+      expect(line1).to eq("─│qx")
+
+      # G1 set to DEC: \e)0, switched via Shift Out \x0e and Shift In \x0f
+      state2 = described_class.parse("\e)0abc\x0eqx\x0fext", 5, 40)
+      line2 = state2[:rows][0][0..7].map { |c| c[:char] }.join
+      expect(line2).to eq("abc─│ext")
+    end
+
+    it "parses mouse tracking mode and format sequences" do
+      state1 = described_class.parse("\e[?1000h\e[?1006h", 5, 40)
+      expect(state1[:mouse_mode]).to eq(:normal)
+      expect(state1[:mouse_format]).to eq(:sgr)
+
+      state2 = described_class.parse("\e[?1002h", 5, 40)
+      expect(state2[:mouse_mode]).to eq(:drag)
+      expect(state2[:mouse_format]).to eq(:normal) # default
+
+      state3 = described_class.parse("\e[?1003h", 5, 40)
+      expect(state3[:mouse_mode]).to eq(:all)
+
+      state4 = described_class.parse("\e[?1002h\e[?1002l", 5, 40)
+      expect(state4[:mouse_mode]).to eq(:none)
+    end
+
+    it "reconstructs mouse tracking and cursor parameters in build_frame" do
+      state_data = {
+        size: { rows: 2, cols: 5 },
+        rows: Array.new(2) { Array.new(5) { described_class.default_cell.dup } },
+        cursor: { row: 0, col: 0, visible: false, style: 2 },
+        mouse_mode: :all,
+        mouse_format: :sgr
+      }
+      frame = described_class.build_frame(state_data)
+      expect(frame).to include("\e[?25l")
+      expect(frame).to include("\e[2 q")
+      expect(frame).to include("\e[?1003h")
+      expect(frame).to include("\e[?1006h")
     end
   end
 end

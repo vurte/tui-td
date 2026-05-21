@@ -7,7 +7,7 @@ RSpec.describe TUITD::HtmlRenderer do
   let(:basic_state) do
     {
       size: { rows: 2, cols: 5 },
-      cursor: { row: 0, col: 0 },
+      cursor: { row: 0, col: 2 },
       rows: [
         [
           { char: "H", fg: "cyan", bg: "default", bold: true, italic: false, underline: false },
@@ -188,6 +188,54 @@ RSpec.describe TUITD::HtmlRenderer do
       }
       html = described_class.new(state).to_html
       expect(html).to include("#aa0000")
+    end
+
+    it "renders blink animations for blinking cells" do
+      state = {
+        size: { rows: 1, cols: 2 },
+        cursor: { row: 0, col: 1 },
+        rows: [
+          [
+            { char: "B", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: true },
+            { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false },
+          ]
+        ]
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("class=\"term-blink\"")
+    end
+
+    it "renders hidden cursor class" do
+      state = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, visible: false },
+        rows: [
+          [{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]
+        ]
+      }
+      html = described_class.new(state).to_html
+      expect(html).to include("cursor-hidden")
+    end
+
+    it "renders block, underline and bar cursors" do
+      # Test block cursor
+      state_block = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 2 }, # steady block
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]]
+      }
+      html_block = described_class.new(state_block).to_html
+      expect(html_block).to include("cursor-block")
+      expect(html_block).not_to include("cursor-block blink")
+
+      # Test underline cursor
+      state_ul = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 3 }, # blinking underline
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]]
+      }
+      html_ul = described_class.new(state_ul).to_html
+      expect(html_ul).to include("cursor-underline blink")
     end
   end
 

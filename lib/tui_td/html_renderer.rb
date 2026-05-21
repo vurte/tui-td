@@ -72,6 +72,49 @@ module TUITD
           z-index: 1;
           position: relative;
         }
+        .cursor-cell.cursor-hidden {
+          outline: none !important;
+          border: none !important;
+          background-color: transparent !important;
+          color: inherit !important;
+        }
+        .cursor-cell.cursor-block {
+          outline: none;
+          background-color: #fff;
+          color: #000 !important;
+        }
+        .cursor-cell.cursor-block.blink {
+          animation: cursor-block-blink 1s step-end infinite;
+        }
+        .cursor-cell.cursor-underline {
+          outline: none;
+          border-bottom: 2px solid #fff;
+        }
+        .cursor-cell.cursor-underline.blink {
+          animation: cursor-underline-blink 1s step-end infinite;
+        }
+        .cursor-cell.cursor-bar {
+          outline: none;
+          border-left: 2px solid #fff;
+        }
+        .cursor-cell.cursor-bar.blink {
+          animation: cursor-bar-blink 1s step-end infinite;
+        }
+        @keyframes cursor-block-blink {
+          50% { background-color: transparent; color: inherit; }
+        }
+        @keyframes cursor-underline-blink {
+          50% { border-bottom-color: transparent; }
+        }
+        @keyframes cursor-bar-blink {
+          50% { border-left-color: transparent; }
+        }
+        @keyframes term-blink {
+          50% { opacity: 0; }
+        }
+        .term-blink {
+          animation: term-blink 1s step-end infinite;
+        }
       CSS
     end
 
@@ -103,17 +146,20 @@ module TUITD
         bold = cell[:bold] || cell["bold"] || false
         italic = cell[:italic] || cell["italic"] || false
         underline = cell[:underline] || cell["underline"] || false
+        blink = cell[:blink] || cell["blink"] || false
 
-        style_key = [fg, bg, bold, italic, underline]
+        style_key = [fg, bg, bold, italic, underline, blink]
+        is_cur = is_cursor?(ri, ci)
 
-        if current_run && current_run[:key] == style_key
+        if current_run && current_run[:key] == style_key && !current_run[:has_cursor] && !is_cur
           current_run[:chars] << char
         else
           current_run = {
             key: style_key,
             chars: [char],
             style: cell_style(fg, bg, bold, italic, underline),
-            has_cursor: is_cursor?(ri, ci)
+            has_cursor: is_cur,
+            blink: blink
           }
           runs << current_run
         end
@@ -134,17 +180,41 @@ module TUITD
 
     def render_run(run)
       chars = run[:chars].map { |c| escape_html(c) }.join
-      return chars if run[:style].empty? && !run[:has_cursor]
+      return chars if run[:style].empty? && !run[:has_cursor] && !run[:blink]
 
       classes = []
-      classes << "cursor-cell" if run[:has_cursor]
+      if run[:has_cursor]
+        classes << "cursor-cell"
+        cursor_vis = @cursor[:visible] != false && @cursor["visible"] != false
+        if !cursor_vis
+          classes << "cursor-hidden"
+        else
+          style_val = @cursor[:style] || @cursor["style"]
+          case style_val
+          when 0, 1
+            classes << "cursor-block blink"
+          when 2
+            classes << "cursor-block"
+          when 3
+            classes << "cursor-underline blink"
+          when 4
+            classes << "cursor-underline"
+          when 5
+            classes << "cursor-bar blink"
+          when 6
+            classes << "cursor-bar"
+          end
+        end
+      end
+      classes << "term-blink" if run[:blink]
+
       cls = classes.empty? ? "" : %( class="#{classes.join(" ")}")
       style = run[:style].empty? ? "" : %( style="#{run[:style]}")
       %(<span#{cls}#{style}>#{chars}</span>)
     end
 
     def is_cursor?(ri, ci)
-      @cursor[:row] == ri && @cursor[:col] == ci
+      (@cursor[:row] || @cursor["row"]) == ri && (@cursor[:col] || @cursor["col"]) == ci
     end
 
     def css_color(rgb)
