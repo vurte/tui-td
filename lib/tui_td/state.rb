@@ -4,7 +4,7 @@ module TUITD
   # Represents the parsed state of a terminal screen.
   # Provides high-level query methods for AI consumption.
   class State
-    attr_reader :rows, :cols, :grid, :cursor
+    attr_reader :rows, :cols, :grid, :cursor, :cursor_visible, :cursor_style, :mouse_mode, :mouse_format
 
     def initialize(data)
       raise ArgumentError, "State data must include :size key" unless data[:size]
@@ -14,6 +14,13 @@ module TUITD
       @cols = data[:size][:cols]
       @grid = data[:rows]
       @cursor = data[:cursor]
+
+      cursor_info = data[:cursor].is_a?(Hash) ? data[:cursor] : {}
+      @cursor_visible = data.key?(:cursor_visible) ? data[:cursor_visible] : (cursor_info[:visible] != false)
+      @cursor_style = data.key?(:cursor_style) ? data[:cursor_style] : (cursor_info[:style] || 1)
+
+      @mouse_mode = data[:mouse_mode] || :none
+      @mouse_format = data[:mouse_format] || :normal
     end
 
     # Get plain text of the entire terminal (no ANSI)

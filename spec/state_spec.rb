@@ -260,4 +260,21 @@ RSpec.describe TUITD::State do
       expect(state.style_at(10, 10)).to be_nil
     end
   end
+
+  describe "cursor and mouse attributes" do
+    it "exposes cursor and mouse parameters correctly" do
+      data = {
+        size: { rows: 2, cols: 5 },
+        rows: make_grid(2, 5),
+        cursor: { row: 0, col: 0, visible: false, style: 3 },
+        mouse_mode: :drag,
+        mouse_format: :sgr
+      }
+      state = described_class.new(data)
+      expect(state.cursor_visible).to be false
+      expect(state.cursor_style).to eq(3)
+      expect(state.mouse_mode).to eq(:drag)
+      expect(state.mouse_format).to eq(:sgr)
+    end
+  end
 end

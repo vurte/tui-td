@@ -80,6 +80,40 @@ module TUITD
       15 => "bright_white",
     }.freeze
 
+    DEC_MAP = {
+      '`' => '◆',
+      'a' => '▒',
+      'b' => "\u2409",
+      'c' => "\u240C",
+      'd' => "\u240D",
+      'e' => "\u240A",
+      'f' => '°',
+      'g' => '±',
+      'h' => "\u2424",
+      'i' => "\u240B",
+      'j' => '┘',
+      'k' => '┐',
+      'l' => '┌',
+      'm' => '└',
+      'n' => '┼',
+      'o' => '⎺',
+      'p' => '⎻',
+      'q' => '─',
+      'r' => '⎼',
+      's' => '⎽',
+      't' => '├',
+      'u' => '┤',
+      'v' => '┴',
+      'w' => '┬',
+      'x' => '│',
+      'y' => '≤',
+      'z' => '≥',
+      '{' => 'π',
+      '|' => '≠',
+      '}' => '£',
+      '~' => '·'
+    }.freeze
+
     # Parse raw terminal output into a structured state Hash
     def self.parse(raw, rows = 40, cols = 120)
       grid = Array.new(rows) do
@@ -87,10 +121,31 @@ module TUITD
       end
 
       cursor = { row: 0, col: 0 }
-      attrs = { fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      attrs = { fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false }
       saved_cursor = nil
       scroll_region = { top: 0, bottom: rows - 1 }
       pending_dsr = false
+
+      normal_grid = grid
+      alt_grid = nil
+
+      normal_cursor = cursor
+      alt_cursor = { row: 0, col: 0 }
+
+      normal_saved_cursor = nil
+      alt_saved_cursor = nil
+
+      use_alt_screen = false
+
+      cursor_visible = true
+      cursor_style = 1 # 1 = blinking block (default)
+
+      g0_charset = :ascii
+      g1_charset = :dec
+      active_charset = :g0
+
+      mouse_mode = :none
+      mouse_format = :normal
 
       # Strip everything before the last full clear (if any)
       # to avoid accumulated garbage
@@ -101,12 +156,76 @@ module TUITD
         if processed[i] == "\e" && processed[i + 1] == "["
           # Find end of CSI sequence
           j = i + 2
-          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fhlmnRrsu]/)
+          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@\`fhlmnRrsuq]/)
           seq = processed[i..j]
 
-          dsr, new_saved = _apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
+          dsr, new_saved, action = _apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
           pending_dsr ||= dsr
-          saved_cursor = new_saved if new_saved
+
+          if new_saved
+            if use_alt_screen
+              alt_saved_cursor = new_saved
+              saved_cursor = alt_saved_cursor
+            else
+              normal_saved_cursor = new_saved
+              saved_cursor = normal_saved_cursor
+            end
+          end
+
+          if action.key?(:alt_screen)
+            new_alt = action[:alt_screen]
+            code = action[:alt_screen_code]
+            if new_alt != use_alt_screen
+              if new_alt
+                # Switch to Alternate Screen
+                # Save normal cursor
+                normal_cursor = { row: cursor[:row], col: cursor[:col] }
+
+                # Lazy initialize alt grid
+                alt_grid ||= Array.new(rows) do
+                  Array.new(cols) { default_cell.dup }
+                end
+
+                # For \e[?1049h, clear alternate screen and reset cursor to 0,0
+                if code == 1049
+                  alt_grid = Array.new(rows) do
+                    Array.new(cols) { default_cell.dup }
+                  end
+                  alt_cursor = { row: 0, col: 0 }
+                end
+
+                grid = alt_grid
+                cursor = alt_cursor
+                saved_cursor = alt_saved_cursor
+                use_alt_screen = true
+              else
+                # Switch to Normal Screen
+                # Save alt cursor
+                alt_cursor = { row: cursor[:row], col: cursor[:col] }
+
+                grid = normal_grid
+                cursor = normal_cursor
+                saved_cursor = normal_saved_cursor
+                use_alt_screen = false
+              end
+            end
+          end
+
+          if action.key?(:cursor_visible)
+            cursor_visible = action[:cursor_visible]
+          end
+
+          if action.key?(:cursor_style)
+            cursor_style = action[:cursor_style]
+          end
+
+          if action.key?(:mouse_mode)
+            mouse_mode = action[:mouse_mode]
+          end
+
+          if action.key?(:mouse_format)
+            mouse_format = action[:mouse_format]
+          end
 
           i = j + 1
         elsif processed[i] == "\n" || processed[i] == "\r\n"
@@ -126,11 +245,23 @@ module TUITD
         elsif processed[i] == "\a"
           # Bell — ignore
           i += 1
+        elsif processed[i] == "\x0e"
+          active_charset = :g1
+          i += 1
+        elsif processed[i] == "\x0f"
+          active_charset = :g0
+          i += 1
         elsif processed[i] == "\e"
           # Handle non-CSI escape sequences
           if processed[i + 1] == "7"
             # DECSC — Save Cursor
-            saved_cursor = { row: cursor[:row], col: cursor[:col] }
+            if use_alt_screen
+              alt_saved_cursor = { row: cursor[:row], col: cursor[:col] }
+              saved_cursor = alt_saved_cursor
+            else
+              normal_saved_cursor = { row: cursor[:row], col: cursor[:col] }
+              saved_cursor = normal_saved_cursor
+            end
             i += 2
           elsif processed[i + 1] == "8"
             # DECRC — Restore Cursor
@@ -139,8 +270,14 @@ module TUITD
               cursor[:col] = saved_cursor[:col]
             end
             i += 2
+          elsif processed[i + 1] == "(" && (processed[i + 2] == "0" || processed[i + 2] == "B")
+            g0_charset = (processed[i + 2] == "0" ? :dec : :ascii)
+            i += 3
+          elsif processed[i + 1] == ")" && (processed[i + 2] == "0" || processed[i + 2] == "B")
+            g1_charset = (processed[i + 2] == "0" ? :dec : :ascii)
+            i += 3
           elsif processed[i + 1] && processed[i + 1].match?(/[()*+\-.\/]/)
-            # ISO 2022 charset: \e( B  \e) 0  etc. (3 chars total)
+            # Other ISO 2022 charset sequences (e.g. G2/G3 or other charsets)
             i += 3
           else
             i += 1
@@ -149,7 +286,12 @@ module TUITD
           # Printable character (including multi-byte UTF-8)
           if cursor[:row] < rows && cursor[:col] < cols
             cell = grid[cursor[:row]][cursor[:col]]
-            cell[:char] = char
+            current_charset = (active_charset == :g1 ? g1_charset : g0_charset)
+            mapped_char = char
+            if current_charset == :dec && DEC_MAP.key?(char)
+              mapped_char = DEC_MAP[char]
+            end
+            cell[:char] = mapped_char
             cell.merge!(attrs)
             cursor[:col] += 1
             cursor[:col] = cols - 1 if cursor[:col] >= cols
@@ -180,9 +322,18 @@ module TUITD
 
       {
         size: { rows: rows, cols: cols },
-        cursor: cursor,
+        cursor: {
+          row: cursor[:row],
+          col: cursor[:col],
+          visible: cursor_visible,
+          style: cursor_style
+        },
         rows: grid,
         pending_dsr: pending_dsr,
+        cursor_visible: cursor_visible,
+        cursor_style: cursor_style,
+        mouse_mode: mouse_mode,
+        mouse_format: mouse_format
       }
     end
 
@@ -192,6 +343,8 @@ module TUITD
       cols = state.dig(:size, :cols) || state["size"]["cols"]
       grid = state[:rows] || state["rows"]
       cursor = state[:cursor] || state["cursor"]
+      mouse_mode = state[:mouse_mode] || state["mouse_mode"] || :none
+      mouse_format = state[:mouse_format] || state["mouse_format"] || :normal
 
       out = +""
       out << "\e[0m"
@@ -205,11 +358,13 @@ module TUITD
           bold = cell[:bold] || cell["bold"] || false
           italic = cell[:italic] || cell["italic"] || false
           underline = cell[:underline] || cell["underline"] || false
+          blink = cell[:blink] || cell["blink"] || false
 
           codes = []
           codes << "1" if bold
           codes << "3" if italic
           codes << "4" if underline
+          codes << "5" if blink
 
           fg_code = _color_code(fg, "38")
           bg_code = _color_code(bg, "48")
@@ -223,6 +378,36 @@ module TUITD
         out << "\n" if ri < rows - 1
       end
 
+      # Reconstruct cursor visibility
+      cursor_vis = true
+      if cursor.is_a?(Hash)
+        cursor_vis = cursor[:visible] != false && cursor["visible"] != false
+      end
+      out << (cursor_vis ? "\e[?25h" : "\e[?25l")
+
+      # Reconstruct cursor style
+      if cursor.is_a?(Hash)
+        style = cursor[:style] || cursor["style"]
+        out << "\e[#{style} q" if style
+      end
+
+      # Reconstruct mouse mode and format
+      if mouse_mode == :normal
+        out << "\e[?1000h"
+      elsif mouse_mode == :drag
+        out << "\e[?1002h"
+      elsif mouse_mode == :all
+        out << "\e[?1003h"
+      else
+        out << "\e[?1000l\e[?1002l\e[?1003l"
+      end
+
+      if mouse_format == :sgr
+        out << "\e[?1006h"
+      else
+        out << "\e[?1006l"
+      end
+
       out << "\e[0m"
       out
     end
@@ -230,13 +415,16 @@ module TUITD
     def self._apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
       # Strip leading escape char if present
       cleaned = seq.sub(/^\e/, "")
-      match = cleaned.match(/^\[([\d;]*)([A-HJ-KP-SX@`fhlmnRrsu])$/)
-      return [false, nil] unless match
+      match = cleaned.match(/^\[(\??)([\d;]*)( ?)([A-HJ-KP-SX@\`fhlmnRrsuq])$/)
+      return [false, nil, {}] unless match
 
-      params = match[1].split(";").map(&:to_i)
-      command = match[2]
+      is_private = (match[1] == "?")
+      params = match[2].split(";").map(&:to_i)
+      space = match[3]
+      command = match[4]
 
       new_saved = nil
+      action = {}
 
       case command
       when "m"
@@ -309,38 +497,81 @@ module TUITD
         end
         cursor[:row] = 0
         cursor[:col] = 0
-      when "h", "l" # DEC private mode set/reset — skip
-        nil
+      when "h"
+        if is_private
+          params.each do |p|
+            case p
+            when 47, 1047, 1049
+              action[:alt_screen] = true
+              action[:alt_screen_code] = p
+            when 25
+              action[:cursor_visible] = true
+            when 1000
+              action[:mouse_mode] = :normal
+            when 1002
+              action[:mouse_mode] = :drag
+            when 1003
+              action[:mouse_mode] = :all
+            when 1006
+              action[:mouse_format] = :sgr
+            end
+          end
+        end
+      when "l"
+        if is_private
+          params.each do |p|
+            case p
+            when 47, 1047, 1049
+              action[:alt_screen] = false
+              action[:alt_screen_code] = p
+            when 25
+              action[:cursor_visible] = false
+            when 1000, 1002, 1003
+              action[:mouse_mode] = :none
+            when 1006
+              action[:mouse_format] = :normal
+            end
+          end
+        end
+      when "q"
+        if space == " "
+          style_val = params[0] || 0
+          action[:cursor_style] = style_val
+        end
       when "n" # DSR — Device Status Report request
-        return [params[0] == 6, nil]
+        return [params[0] == 6, nil, {}]
       when "R" # DSR response (from terminal side) or CPR — ignore
         nil
       end
 
-      [false, new_saved]
+      [false, new_saved, action]
     end
 
     def self._apply_sgr(params, attrs)
-      return attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false) if params.empty? || params == [0]
+      return attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false) if params.empty? || params == [0]
 
       i = 0
       while i < params.length
         p = params[i]
         case p
         when 0
-          attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false)
+          attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false)
         when 1
           attrs[:bold] = true
         when 3
           attrs[:italic] = true
         when 4
           attrs[:underline] = true
+        when 5, 6
+          attrs[:blink] = true
         when 22
           attrs[:bold] = false
         when 23
           attrs[:italic] = false
         when 24
           attrs[:underline] = false
+        when 25
+          attrs[:blink] = false
         when 7
           # Reverse — swap fg and bg
           attrs[:fg], attrs[:bg] = attrs[:bg], attrs[:fg]
@@ -453,7 +684,7 @@ module TUITD
     end
 
     def self.default_cell
-      { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false }
     end
 
     # Extract a single UTF-8 character at position i in a binary string.

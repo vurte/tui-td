@@ -202,4 +202,41 @@ RSpec.describe TUITD::Screenshot do
       end
     end
   end
+
+  describe "box drawing character rendering" do
+    it "renders Unicode box drawing characters" do
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "─" # horizontal light
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
+      
+      # The center of the first cell is at cx=4, cy=8
+      # '─' should draw a horizontal line through the middle (cy=8)
+      line_pixels = 0
+      8.times do |x|
+        line_pixels += 1 if png[x, 8] == white
+      end
+      expect(line_pixels).to be > 0
+    end
+
+    it "renders double corners and lines" do
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "╔" # double down-right corner
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
+
+      # Outer double corner top-left is at (cx-2, cy-2) -> (2, 6)
+      expect(png[2, 6]).to eq(white)
+      # Inner double corner top-left is at (cx+2, cy+2) -> (6, 10)
+      expect(png[6, 10]).to eq(white)
+    end
+  end
 end

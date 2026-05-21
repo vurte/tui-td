@@ -142,7 +142,7 @@ module TUITD
 
     # Get structured terminal state as a Hash
     def state_data
-      refresh_state! if @state.nil?
+      refresh_state!
       @state
     end
 

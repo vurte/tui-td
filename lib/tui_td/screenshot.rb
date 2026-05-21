@@ -107,6 +107,97 @@ module TUITD
       0x00, 0x70, 0x18, 0x18, 0x18, 0x18, 0x0e, 0x0e, 0x18, 0x18, 0x18, 0x18, 0x70, 0x00, 0x00, 0x00,  # } (125)
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x32, 0x7e, 0x4c, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,  # ~ (126)
     ].freeze
+    BOX_CHARS = {
+      # horizontal
+      "─" => [false, false, true, true, :light],
+      "━" => [false, false, true, true, :heavy],
+      "═" => [false, false, true, true, :double],
+      # vertical
+      "│" => [true, true, false, false, :light],
+      "┃" => [true, true, false, false, :heavy],
+      "║" => [true, true, false, false, :double],
+      # corners
+      "┌" => [false, true, false, true, :light],
+      "┍" => [false, true, false, true, :light],
+      "┎" => [false, true, false, true, :light],
+      "┏" => [false, true, false, true, :heavy],
+      "┐" => [false, true, true, false, :light],
+      "┑" => [false, true, true, false, :light],
+      "┒" => [false, true, true, false, :light],
+      "┓" => [false, true, true, false, :heavy],
+      "└" => [true, false, false, true, :light],
+      "▼" => [true, false, false, true, :light],
+      "┖" => [true, false, false, true, :light],
+      "┗" => [true, false, false, true, :heavy],
+      "┘" => [true, false, true, false, :light],
+      "┙" => [true, false, true, false, :light],
+      "┚" => [true, false, true, false, :light],
+      "┛" => [true, false, true, false, :heavy],
+      # double corners
+      "╔" => [false, true, false, true, :double],
+      "╗" => [false, true, true, false, :double],
+      "╚" => [true, false, false, true, :double],
+      "╝" => [true, false, true, false, :double],
+      # T-junctions
+      "├" => [true, true, false, true, :light],
+      "┣" => [true, true, false, true, :heavy],
+      "┤" => [true, true, true, false, :light],
+      "┫" => [true, true, true, false, :heavy],
+      "┬" => [false, true, true, true, :light],
+      "┳" => [false, true, true, true, :heavy],
+      "┴" => [true, false, true, true, :light],
+      "┻" => [true, false, true, true, :heavy],
+      # double T-junctions
+      "╠" => [true, true, false, true, :double],
+      "╣" => [true, true, true, false, :double],
+      "╦" => [false, true, true, true, :double],
+      "╩" => [true, false, true, true, :double],
+      # crosses
+      "┼" => [true, true, true, true, :light],
+      "╋" => [true, true, true, true, :heavy],
+      "╬" => [true, true, true, true, :double],
+      # single lines (ends)
+      "╴" => [false, false, true, false, :light],
+      "╵" => [true, false, false, false, :light],
+      "╶" => [false, false, false, true, :light],
+      "╷" => [false, true, false, false, :light],
+      "╸" => [false, false, true, false, :heavy],
+      "╹" => [true, false, false, false, :heavy],
+      "╺" => [false, false, false, true, :heavy],
+      "╻" => [false, true, false, false, :heavy],
+      # mixed corners/junctions
+      "┿" => [true, true, true, true, :light],
+      "╀" => [true, true, true, true, :light],
+      "╁" => [true, true, true, true, :light],
+      "╂" => [true, true, true, true, :light],
+      "╃" => [true, true, true, true, :heavy],
+      "╄" => [true, true, true, true, :heavy],
+      "╅" => [true, true, true, true, :heavy],
+      "╆" => [true, true, true, true, :heavy],
+      "╇" => [true, true, true, true, :heavy],
+      "╈" => [true, true, true, true, :heavy],
+      "╉" => [true, true, true, true, :heavy],
+      "╊" => [true, true, true, true, :heavy],
+      "╒" => [false, true, false, true, :double],
+      "╓" => [false, true, false, true, :double],
+      "╕" => [false, true, true, false, :double],
+      "╖" => [false, true, true, false, :double],
+      "╘" => [true, false, false, true, :double],
+      "╙" => [true, false, false, true, :double],
+      "╛" => [true, false, true, false, :double],
+      "╜" => [true, false, true, false, :double],
+      "╞" => [true, true, false, true, :double],
+      "╟" => [true, true, false, true, :double],
+      "╡" => [true, true, true, false, :double],
+      "╢" => [true, true, true, false, :double],
+      "╤" => [false, true, true, true, :double],
+      "╥" => [false, true, true, true, :double],
+      "╧" => [true, false, true, true, :double],
+      "╨" => [true, false, true, true, :double],
+      "╪" => [true, true, true, true, :double],
+      "╫" => [true, true, true, true, :double]
+    }.freeze
+
     private_constant :FONT
 
     def initialize(state)
@@ -150,6 +241,12 @@ module TUITD
       py = ri * CELL_H
 
       fill_rect(image, px, py, CELL_W, CELL_H, bg_rgb)
+
+      if box_drawing?(char)
+        draw_box_character(image, px, py, char, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      end
 
       return if char == " " || char.ord < 32 || char.ord > 126
 
@@ -198,6 +295,95 @@ module TUITD
       color = ChunkyPNG::Color.rgb(*fg_rgb)
       y = py + CELL_H - 2
       w.times { |dx| image[px + dx, y] = color }
+    end
+
+    def box_drawing?(char)
+      char_ord = char.ord
+      char_ord >= 0x2500 && char_ord <= 0x257F
+    end
+
+    def draw_box_character(image, px, py, char, fg_rgb)
+      config = BOX_CHARS[char]
+
+      unless config
+        char_ord = char.ord
+        if [0x2500, 0x2501, 0x2504, 0x2505, 0x2508, 0x2509, 0x254c, 0x254d, 0x2550].include?(char_ord)
+          style = [0x2501, 0x2505, 0x2509, 0x254d].include?(char_ord) ? :heavy : (char_ord == 0x2550 ? :double : :light)
+          config = [false, false, true, true, style]
+        elsif [0x2502, 0x2503, 0x2506, 0x2507, 0x250a, 0x250b, 0x254e, 0x254f, 0x2551].include?(char_ord)
+          style = [0x2503, 0x2507, 0x250b, 0x254f].include?(char_ord) ? :heavy : (char_ord == 0x2551 ? :double : :light)
+          config = [true, true, false, false, style]
+        else
+          config = [true, true, true, true, :light]
+        end
+      end
+
+      up, down, left, right, style = config
+      cx = px + 4
+      cy = py + 8
+
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+
+      if style == :double
+        if left
+          (px..(cx + 2)).each { |x| image[x, py + 6] = color }
+          (px..(cx + 2)).each { |x| image[x, py + 10] = color }
+        end
+        if right
+          ((cx - 2)..(px + 7)).each { |x| image[x, py + 6] = color }
+          ((cx - 2)..(px + 7)).each { |x| image[x, py + 10] = color }
+        end
+        if up
+          (py..(cy + 2)).each { |y| image[px + 2, y] = color }
+          (py..(cy + 2)).each { |y| image[px + 6, y] = color }
+        end
+        if down
+          ((cy - 2)..(py + 15)).each { |y| image[px + 2, y] = color }
+          ((cy - 2)..(py + 15)).each { |y| image[px + 6, y] = color }
+        end
+      elsif style == :heavy
+        if left
+          (px..cx).each do |x|
+            image[x, cy - 1] = color
+            image[x, cy] = color
+            image[x, cy + 1] = color
+          end
+        end
+        if right
+          (cx..(px + 7)).each do |x|
+            image[x, cy - 1] = color
+            image[x, cy] = color
+            image[x, cy + 1] = color
+          end
+        end
+        if up
+          (py..cy).each do |y|
+            image[cx - 1, y] = color
+            image[cx, y] = color
+            image[cx + 1, y] = color
+          end
+        end
+        if down
+          (cy..(py + 15)).each do |y|
+            image[cx - 1, y] = color
+            image[cx, y] = color
+            image[cx + 1, y] = color
+          end
+        end
+      else # :light
+        if left
+          (px..cx).each { |x| image[x, cy] = color }
+        end
+        if right
+          (cx..(px + 7)).each { |x| image[x, cy] = color }
+        end
+        if up
+          (py..cy).each { |y| image[cx, y] = color }
+        end
+        if down
+          (cy..(py + 15)).each { |y| image[cx, y] = color }
+        end
+      end
     end
 
   end
