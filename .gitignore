@@ -3,6 +3,7 @@
 vendor/bundle/
 .DS_Store
 *.png
+*.html
 *.gif
 tmp/
 Gemfile.lock
