@@ -239,4 +239,32 @@ RSpec.describe TUITD::Screenshot do
       expect(png[6, 10]).to eq(white)
     end
   end
+
+  describe "cursor rendering" do
+    it "renders steady block cursor by inverting colors" do
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:cursor_visible] = true
+      state[:cursor_style] = 1 # Block
+      state[:cursor] = { row: 0, col: 0, visible: true, style: 1 }
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      # Initially empty_state is black (0x000000). Inverted it should be white (0xFFFFFF).
+      expect(png[0, 0]).to eq(ChunkyPNG::Color.rgb(255, 255, 255))
+    end
+
+    it "renders underline cursor" do
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:cursor_visible] = true
+      state[:cursor_style] = 3 # Underline
+      state[:cursor] = { row: 0, col: 0, visible: true, style: 3 }
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      # Underline is drawn at bottom of cell, e.g. y = CELL_H - 1 = 15
+      expect(png[0, 15]).to eq(ChunkyPNG::Color.rgb(255, 255, 255))
+    end
+  end
 end
