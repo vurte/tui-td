@@ -252,11 +252,118 @@ RSpec.describe TUITD::Screenshot do
       # - px+5..px+7 at py+8 (horizontal right segment)
       # - py+10..py+15 at px+4 (vertical down segment)
       # - px+4, py+9 (arc)
+      # - px+5, py+9 (connection)
       expect(png[6, 8]).to eq(white)
       expect(png[4, 12]).to eq(white)
       expect(png[4, 9]).to eq(white)
+      expect(png[5, 9]).to eq(white)
       # And the sharp corner pixel px+4, py+8 should NOT be set (remain black)
       expect(png[4, 8]).to eq(ChunkyPNG::Color::BLACK)
+    end
+
+    it "renders new special characters" do
+      state = {
+        size: { rows: 2, cols: 30 },
+        cursor: { row: 0, col: 0 },
+        rows: Array.new(2) do
+          Array.new(30) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
+        end
+      }
+      chars = ["▀", "▲", "✓", "▄", "█", "▼", "✗", "↑", "↓", "→", "⚙", "⚠", "…", "—", "⠋", "←", "▌", "▐", "☐", "☑", "☒", "ℹ", "✖"]
+      chars.each_with_index do |char, idx|
+        state[:rows][0][idx][:char] = char
+        state[:rows][0][idx][:fg] = "white"
+      end
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
+      
+      # ▀ (cell 0,0: px=0)
+      expect(png[2, 2]).to eq(white)
+      expect(png[2, 10]).to eq(ChunkyPNG::Color::BLACK)
+
+      # ▲ (cell 0,1: px=8)
+      expect(png[12, 5]).to eq(white)
+
+      # ✓ (cell 0,2: px=16)
+      expect(png[20, 10]).to eq(white)
+
+      # ▄ (cell 0,3: px=24)
+      expect(png[26, 10]).to eq(white)
+      expect(png[26, 2]).to eq(ChunkyPNG::Color::BLACK)
+
+      # █ (cell 0,4: px=32)
+      expect(png[34, 2]).to eq(white)
+      expect(png[34, 10]).to eq(white)
+
+      # ▼ (cell 0,5: px=40)
+      expect(png[44, 7]).to eq(white)
+
+      # ✗ (cell 0,6: px=48)
+      expect(png[52, 8]).to eq(white)
+
+      # ↑ (cell 0,7: px=56)
+      expect(png[60, 4]).to eq(white)
+
+      # ↓ (cell 0,8: px=64)
+      expect(png[68, 11]).to eq(white)
+
+      # → (cell 0,9: px=72)
+      expect(png[77, 8]).to eq(white)
+
+      # ⚙ (cell 0,10: px=80)
+      expect(png[84, 6]).to eq(white)
+
+      # ⚠ (cell 0,11: px=88)
+      expect(png[92, 3]).to eq(white)
+
+      # … (cell 0,12: px=96)
+      expect(png[100, 12]).to eq(white)
+
+      # — (cell 0,13: px=104)
+      expect(png[106, 8]).to eq(white)
+
+      # ⠋ (cell 0,14: px=112)
+      expect(png[114, 3]).to eq(white)
+
+      # ← (cell 0,15: px=120)
+      expect(png[124, 8]).to eq(white)
+      expect(png[121, 8]).to eq(white)
+      expect(png[122, 7]).to eq(white)
+      expect(png[123, 6]).to eq(white)
+
+      # ▌ (cell 0,16: px=128)
+      expect(png[128 + 2, 2]).to eq(white)
+      expect(png[128 + 6, 2]).to eq(ChunkyPNG::Color::BLACK)
+
+      # ▐ (cell 0,17: px=136)
+      expect(png[136 + 2, 2]).to eq(ChunkyPNG::Color::BLACK)
+      expect(png[136 + 6, 2]).to eq(white)
+
+      # ☐ (cell 0,18: px=144)
+      expect(png[144 + 1, 4]).to eq(white)
+      expect(png[144 + 3, 7]).to eq(ChunkyPNG::Color::BLACK)
+
+      # ☑ (cell 0,19: px=152)
+      expect(png[152 + 1, 4]).to eq(white)
+      expect(png[152 + 3, 9]).to eq(white)
+
+      # ☒ (cell 0,20: px=160)
+      expect(png[160 + 1, 4]).to eq(white)
+      expect(png[160 + 3, 7]).to eq(white)
+
+      # ℹ (cell 0,21: px=168)
+      expect(png[168 + 1, 6]).to eq(white)
+      expect(png[168 + 4, 6]).to eq(white)
+      expect(png[168 + 4, 7]).to eq(ChunkyPNG::Color::BLACK)
+      expect(png[168 + 4, 8]).to eq(white)
+
+      # ✖ (cell 0,22: px=176)
+      expect(png[176 + 3, 8]).to eq(white)
+      expect(png[176 + 1, 4]).to eq(white)
+      expect(png[176 + 2, 4]).to eq(white)
     end
   end
 
