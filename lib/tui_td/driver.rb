@@ -77,6 +77,8 @@ module TUITD
       when :backspace then send("\u007f")
       when :ctrl_c then send("\u0003")
       when :ctrl_d then send("\u0004")
+      when :page_up   then send("\e[5~")
+      when :page_down then send("\e[6~")
       else send(keys.to_s)
       end
     end

@@ -220,6 +220,8 @@ module TUITD
         end
       end
 
+      draw_cursor(image)
+
       image.save(output_path)
       output_path
     end
@@ -248,7 +250,22 @@ module TUITD
         return
       end
 
-      return if char == " " || char.ord < 32 || char.ord > 126
+      char_ord = char.ord
+      if char_ord == 10095 # '❯'
+        draw_chevron(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 9210 || char_ord == 9679 # '⏺' or '●'
+        draw_circle(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord >= 0x2800 && char_ord <= 0x28ff # Braille spinner
+        draw_braille(image, px, py, char, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      end
+
+      return if char == " " || char_ord < 32 || char_ord > 126
 
       rows_data = glyph_rows(char)
       return unless rows_data
@@ -331,7 +348,7 @@ module TUITD
         end
         if right
           ((cx - 2)..(px + 7)).each { |x| image[x, py + 6] = color }
-          ((cx - 2)..(px + 7)).each { |x| image[x, py + 10] = color }
+          ((cx - 2)..(px + 10)).each { |x| image[x, py + 10] = color }
         end
         if up
           (py..(cy + 2)).each { |y| image[px + 2, y] = color }
@@ -382,6 +399,122 @@ module TUITD
         end
         if down
           (cy..(py + 15)).each { |y| image[cx, y] = color }
+        end
+      end
+    end
+
+    def draw_cursor(image)
+      cursor_info = @state[:cursor] || @state["cursor"] || {}
+      cursor_vis = @state[:cursor_visible]
+      cursor_vis = cursor_info[:visible] if cursor_vis.nil?
+      cursor_vis = cursor_info["visible"] if cursor_vis.nil?
+      cursor_vis = false if cursor_vis.nil? # default invisible
+
+      return unless cursor_vis
+
+      ri = cursor_info[:row] || cursor_info["row"] || 0
+      ci = cursor_info[:col] || cursor_info["col"] || 0
+
+      return if ri < 0 || ri >= @rows || ci < 0 || ci >= @cols
+
+      style_val = @state[:cursor_style] || cursor_info[:style] || cursor_info["style"] || 1
+
+      px = ci * CELL_W
+      py = ri * CELL_H
+
+      color_rgb = [255, 255, 255] # Weiß standardmäßig
+      color = ChunkyPNG::Color.rgb(*color_rgb)
+
+      case style_val
+      when 1, 2 # Blinking Block oder Steady Block
+        CELL_H.times do |dy|
+          CELL_W.times do |dx|
+            x = px + dx
+            y = py + dy
+            next if x >= image.width || y >= image.height
+            original_color = image[x, y]
+            r = 255 - ChunkyPNG::Color.r(original_color)
+            g = 255 - ChunkyPNG::Color.g(original_color)
+            b = 255 - ChunkyPNG::Color.b(original_color)
+            image[x, y] = ChunkyPNG::Color.rgb(r, g, b)
+          end
+        end
+      when 3, 4 # Underline
+        2.times do |h_offset|
+          y = py + CELL_H - 1 - h_offset
+          next if y >= image.height
+          CELL_W.times do |dx|
+            x = px + dx
+            next if x >= image.width
+            image[x, y] = color
+          end
+        end
+      when 5, 6 # Bar
+        2.times do |w_offset|
+          x = px + w_offset
+          next if x >= image.width
+          CELL_H.times do |dy|
+            y = py + dy
+            next if y >= image.height
+            image[x, y] = color
+          end
+        end
+      end
+    end
+
+    def draw_chevron(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (0..3).each do |i|
+        image[px + 2 + i, py + 4 + i] = color
+        image[px + 3 + i, py + 4 + i] = color # bold/thick chevron
+        
+        image[px + 5 - i, py + 8 + i] = color
+        image[px + 6 - i, py + 8 + i] = color # bold/thick chevron
+      end
+    end
+
+    def draw_circle(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      cx = px + 4
+      cy = py + 8
+      (-3..3).each do |dy|
+        r_width = case dy.abs
+                  when 3 then 1
+                  when 2 then 2
+                  else 3
+                  end
+        (-r_width..r_width).each do |dx|
+          x = cx + dx
+          y = cy + dy
+          next if x < px || x >= px + CELL_W || y < py || y >= py + CELL_H
+          image[x, y] = color
+        end
+      end
+    end
+
+    def draw_braille(image, px, py, char, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      mask = char.ord - 0x2800
+      dot_coords = [
+        [2, 3],  # Dot 1
+        [2, 6],  # Dot 2
+        [2, 9],  # Dot 3
+        [5, 3],  # Dot 4
+        [5, 6],  # Dot 5
+        [5, 9],  # Dot 6
+        [2, 12], # Dot 7
+        [5, 12]  # Dot 8
+      ]
+      dot_coords.each_with_index do |(dx, dy), idx|
+        if (mask & (1 << idx)) != 0
+          2.times do |ddy|
+            2.times do |ddx|
+              x = px + dx + ddx
+              y = py + dy + ddy
+              next if x >= image.width || y >= image.height
+              image[x, y] = color
+            end
+          end
         end
       end
     end
