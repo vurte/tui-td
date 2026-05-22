@@ -117,6 +117,10 @@ module TUITD
       "┃" => [true, true, false, false, :heavy],
       "║" => [true, true, false, false, :double],
       # corners
+      "╭" => [false, true, false, true, :light_rounded],
+      "╮" => [false, true, true, false, :light_rounded],
+      "╯" => [true, false, true, false, :light_rounded],
+      "╰" => [true, false, false, true, :light_rounded],
       "┌" => [false, true, false, true, :light],
       "┍" => [false, true, false, true, :light],
       "┎" => [false, true, false, true, :light],
@@ -386,6 +390,29 @@ module TUITD
             image[cx, y] = color
             image[cx + 1, y] = color
           end
+        end
+      elsif style == :light_rounded
+        case char
+        when "╭"
+          (px + 5..px + 7).each { |x| image[x, py + 8] = color }
+          (py + 10..py + 15).each { |y| image[px + 4, y] = color }
+          image[px + 4, py + 9] = color
+          image[px + 5, py + 8] = color
+        when "╮"
+          (px..px + 3).each { |x| image[x, py + 8] = color }
+          (py + 10..py + 15).each { |y| image[px + 4, y] = color }
+          image[px + 4, py + 9] = color
+          image[px + 3, py + 8] = color
+        when "╯"
+          (px..px + 3).each { |x| image[x, py + 8] = color }
+          (py..py + 6).each { |y| image[px + 4, y] = color }
+          image[px + 4, py + 7] = color
+          image[px + 3, py + 8] = color
+        when "╰"
+          (px + 5..px + 7).each { |x| image[x, py + 8] = color }
+          (py..py + 6).each { |y| image[px + 4, y] = color }
+          image[px + 4, py + 7] = color
+          image[px + 5, py + 8] = color
         end
       else # :light
         if left

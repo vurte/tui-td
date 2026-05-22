@@ -238,6 +238,26 @@ RSpec.describe TUITD::Screenshot do
       # Inner double corner top-left is at (cx+2, cy+2) -> (6, 10)
       expect(png[6, 10]).to eq(white)
     end
+
+    it "renders rounded corners" do
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "╭"
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(output_path)
+      png = ChunkyPNG::Image.from_file(output_path)
+
+      white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
+      # ╭ (top-left rounded corner) should draw:
+      # - px+5..px+7 at py+8 (horizontal right segment)
+      # - py+10..py+15 at px+4 (vertical down segment)
+      # - px+4, py+9 (arc)
+      expect(png[6, 8]).to eq(white)
+      expect(png[4, 12]).to eq(white)
+      expect(png[4, 9]).to eq(white)
+      # And the sharp corner pixel px+4, py+8 should NOT be set (remain black)
+      expect(png[4, 8]).to eq(ChunkyPNG::Color::BLACK)
+    end
   end
 
   describe "cursor rendering" do
