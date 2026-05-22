@@ -1,5 +1,16 @@
 # CHANGELOG
 
+## 0.2.7
+
+- Screenshot rendering for 23 special characters: blocks (▀ ▄ █), triangles (▲ ▼), arrows (↑ ↓ → ←), half blocks (▌ ▐)
+- Screenshot rendering for symbols: checkmarks (✓ ✗ ✖), checkboxes (☐ ☑ ☒), gear (⚙), warning (⚠), info (ℹ)
+- Screenshot rendering for punctuation: ellipsis (…), em dash (—)
+- Cursor drawing support in screenshot renderer
+- Braille character rendering in screenshot
+- Rounded corner box-drawing characters (╭ ╮ ╯ ╰) in screenshot
+- `page_up` / `page_down` key support in test runner and driver
+- Fixed junction pixels in rounded corner box-drawing characters
+
 ## 0.2.6
 
 - ISO-2022 charset switching support (G0/G1 designators, Shift Out/In) with DEC Special Character & Line Drawing mapping
