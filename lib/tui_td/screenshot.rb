@@ -130,7 +130,6 @@ module TUITD
       "┒" => [false, true, true, false, :light],
       "┓" => [false, true, true, false, :heavy],
       "└" => [true, false, false, true, :light],
-      "▼" => [true, false, false, true, :light],
       "┖" => [true, false, false, true, :light],
       "┗" => [true, false, false, true, :heavy],
       "┘" => [true, false, true, false, :light],
@@ -267,6 +266,94 @@ module TUITD
         draw_braille(image, px, py, char, fg_rgb)
         draw_underline(image, px, py, CELL_W, fg_rgb) if underline
         return
+      elsif char_ord == 0x2580 # '▀'
+        fill_rect(image, px, py, CELL_W, 8, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2584 # '▄'
+        fill_rect(image, px, py + 8, CELL_W, 8, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2588 # '█'
+        fill_rect(image, px, py, CELL_W, CELL_H, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x25B2 # '▲'
+        draw_up_triangle(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x25BC # '▼'
+        draw_down_triangle(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2713 # '✓'
+        draw_checkmark(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2717 # '✗'
+        draw_ballot_x(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2191 # '↑'
+        draw_up_arrow(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2192 # '→'
+        draw_right_arrow(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2193 # '↓'
+        draw_down_arrow(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2699 # '⚙'
+        draw_gear(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x26A0 # '⚠'
+        draw_warning(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2026 # '…'
+        draw_ellipsis(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2014 # '—'
+        (px..(px + 7)).each { |x| image[x, py + 8] = ChunkyPNG::Color.rgb(*fg_rgb) }
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2190 # '←'
+        draw_left_arrow(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x258C # '▌'
+        draw_left_half_block(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2590 # '▐'
+        draw_right_half_block(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2610 # '☐'
+        draw_empty_checkbox(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2611 # '☑'
+        draw_checked_checkbox(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2612 # '☒'
+        draw_x_checkbox(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2139 # 'ℹ'
+        draw_info_symbol(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
+      elsif char_ord == 0x2716 # '✖'
+        draw_heavy_x(image, px, py, fg_rgb)
+        draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+        return
       end
 
       return if char == " " || char_ord < 32 || char_ord > 126
@@ -397,22 +484,22 @@ module TUITD
           (px + 5..px + 7).each { |x| image[x, py + 8] = color }
           (py + 10..py + 15).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 9] = color
-          image[px + 5, py + 8] = color
+          image[px + 5, py + 9] = color
         when "╮"
           (px..px + 3).each { |x| image[x, py + 8] = color }
           (py + 10..py + 15).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 9] = color
-          image[px + 3, py + 8] = color
+          image[px + 3, py + 9] = color
         when "╯"
           (px..px + 3).each { |x| image[x, py + 8] = color }
           (py..py + 6).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 7] = color
-          image[px + 3, py + 8] = color
+          image[px + 3, py + 7] = color
         when "╰"
           (px + 5..px + 7).each { |x| image[x, py + 8] = color }
           (py..py + 6).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 7] = color
-          image[px + 5, py + 8] = color
+          image[px + 5, py + 7] = color
         end
       else # :light
         if left
@@ -544,6 +631,226 @@ module TUITD
           end
         end
       end
+    end
+
+    def draw_up_triangle(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (5..8).each do |dy|
+        width = dy - 5
+        (4 - width..4 + width).each do |dx|
+          image[px + dx, py + dy] = color
+        end
+      end
+    end
+
+    def draw_down_triangle(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (5..8).each do |dy|
+        width = 8 - dy
+        (4 - width..4 + width).each do |dx|
+          image[px + dx, py + dy] = color
+        end
+      end
+    end
+
+    def draw_checkmark(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      image[px + 2, py + 8] = color
+      image[px + 3, py + 9] = color
+      image[px + 4, py + 10] = color
+      image[px + 5, py + 8] = color
+      image[px + 6, py + 6] = color
+      image[px + 7, py + 4] = color
+    end
+
+    def draw_ballot_x(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      image[px + 2, py + 5] = color
+      image[px + 3, py + 6] = color
+      image[px + 3, py + 7] = color
+      image[px + 4, py + 8] = color
+      image[px + 5, py + 9] = color
+      image[px + 5, py + 10] = color
+      image[px + 6, py + 11] = color
+      image[px + 2, py + 11] = color
+      image[px + 3, py + 10] = color
+      image[px + 3, py + 9] = color
+      image[px + 5, py + 7] = color
+      image[px + 5, py + 6] = color
+      image[px + 6, py + 5] = color
+    end
+
+    def draw_up_arrow(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (3..12).each { |dy| image[px + 4, py + dy] = color }
+      image[px + 3, py + 4] = color
+      image[px + 5, py + 4] = color
+      image[px + 2, py + 5] = color
+      image[px + 6, py + 5] = color
+    end
+
+    def draw_down_arrow(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (3..12).each { |dy| image[px + 4, py + dy] = color }
+      image[px + 3, py + 11] = color
+      image[px + 5, py + 11] = color
+      image[px + 2, py + 10] = color
+      image[px + 6, py + 10] = color
+    end
+
+    def draw_right_arrow(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (1..6).each { |dx| image[px + dx, py + 8] = color }
+      image[px + 5, py + 7] = color
+      image[px + 5, py + 9] = color
+      image[px + 4, py + 6] = color
+      image[px + 4, py + 10] = color
+    end
+
+    def draw_gear(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      image[px + 4, py + 6] = color
+      image[px + 4, py + 10] = color
+      image[px + 2, py + 8] = color
+      image[px + 6, py + 8] = color
+      image[px + 3, py + 7] = color
+      image[px + 5, py + 7] = color
+      image[px + 3, py + 9] = color
+      image[px + 5, py + 9] = color
+      image[px + 4, py + 5] = color
+      image[px + 4, py + 11] = color
+      image[px + 1, py + 8] = color
+      image[px + 7, py + 8] = color
+      image[px + 2, py + 6] = color
+      image[px + 6, py + 6] = color
+      image[px + 2, py + 10] = color
+      image[px + 6, py + 10] = color
+    end
+
+    def draw_warning(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      image[px + 4, py + 3] = color
+      image[px + 3, py + 4] = color
+      image[px + 5, py + 4] = color
+      image[px + 3, py + 5] = color
+      image[px + 5, py + 5] = color
+      image[px + 2, py + 6] = color
+      image[px + 6, py + 6] = color
+      image[px + 2, py + 7] = color
+      image[px + 6, py + 7] = color
+      image[px + 1, py + 8] = color
+      image[px + 7, py + 8] = color
+      image[px + 1, py + 9] = color
+      image[px + 7, py + 9] = color
+      (1..7).each { |dx| image[px + dx, py + 10] = color }
+      image[px + 4, py + 5] = color
+      image[px + 4, py + 6] = color
+      image[px + 4, py + 7] = color
+      image[px + 4, py + 9] = color
+    end
+
+    def draw_ellipsis(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      image[px + 1, py + 12] = color
+      image[px + 4, py + 12] = color
+      image[px + 6, py + 12] = color
+    end
+
+    def draw_left_arrow(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (1..6).each { |dx| image[px + dx, py + 8] = color }
+      image[px + 2, py + 7] = color
+      image[px + 2, py + 9] = color
+      image[px + 3, py + 6] = color
+      image[px + 3, py + 10] = color
+    end
+
+    def draw_left_half_block(image, px, py, fg_rgb)
+      fill_rect(image, px, py, 4, CELL_H, fg_rgb)
+    end
+
+    def draw_right_half_block(image, px, py, fg_rgb)
+      fill_rect(image, px + 4, py, 4, CELL_H, fg_rgb)
+    end
+
+    def draw_checkbox_border(image, px, py, color)
+      (1..6).each do |dx|
+        image[px + dx, py + 4] = color
+        image[px + dx, py + 11] = color
+      end
+      (4..11).each do |dy|
+        image[px + 1, py + dy] = color
+        image[px + 6, py + dy] = color
+      end
+    end
+
+    def draw_empty_checkbox(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      draw_checkbox_border(image, px, py, color)
+    end
+
+    def draw_checked_checkbox(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      draw_checkbox_border(image, px, py, color)
+      image[px + 2, py + 8] = color
+      image[px + 3, py + 9] = color
+      image[px + 4, py + 7] = color
+      image[px + 5, py + 5] = color
+    end
+
+    def draw_x_checkbox(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      draw_checkbox_border(image, px, py, color)
+      image[px + 2, py + 5] = color
+      image[px + 2, py + 6] = color
+      image[px + 3, py + 7] = color
+      image[px + 3, py + 8] = color
+      image[px + 4, py + 7] = color
+      image[px + 4, py + 8] = color
+      image[px + 5, py + 9] = color
+      image[px + 5, py + 10] = color
+      image[px + 2, py + 10] = color
+      image[px + 2, py + 9] = color
+      image[px + 5, py + 6] = color
+      image[px + 5, py + 5] = color
+    end
+
+    def draw_info_symbol(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      (3..5).each do |dx|
+        image[px + dx, py + 4] = color
+        image[px + dx, py + 12] = color
+      end
+      image[px + 2, py + 5] = color
+      image[px + 6, py + 5] = color
+      image[px + 2, py + 11] = color
+      image[px + 6, py + 11] = color
+      (6..10).each do |dy|
+        image[px + 1, py + dy] = color
+        image[px + 7, py + dy] = color
+      end
+      image[px + 4, py + 6] = color
+      (8..10).each do |dy|
+        image[px + 4, py + dy] = color
+      end
+    end
+
+    def draw_heavy_x(image, px, py, fg_rgb)
+      color = ChunkyPNG::Color.rgb(*fg_rgb)
+      [4, 5, 11, 12].each do |dy|
+        image[px + 1, py + dy] = color
+        image[px + 2, py + dy] = color
+        image[px + 5, py + dy] = color
+        image[px + 6, py + dy] = color
+      end
+      [6, 7, 9, 10].each do |dy|
+        image[px + 2, py + dy] = color
+        image[px + 3, py + dy] = color
+        image[px + 4, py + dy] = color
+        image[px + 5, py + dy] = color
+      end
+      image[px + 3, py + 8] = color
+      image[px + 4, py + 8] = color
     end
 
   end
