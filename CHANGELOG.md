@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.2.8
+
+- Unicode bitmap font in screenshot renderer: 2766 glyphs from GNU Unifont 17.0.04 covering Latin, Greek, Cyrillic, Arabic, Turkish, Math, Arrows, Box Drawing, Symbols, and Dingbats
+- Cairo renderer as optional fallback for characters not in Unifont (e.g. CJK), with 3x supersampling and box-filter downsampling for sharp edges
+- Rendering priority: Spleen (ASCII 33–126) → Unifont (127+, 2766 glyphs) → Cairo (fallback)
+- Full test coverage for Unifont glyphs and Cairo renderer
+
 ## 0.2.7
 
 - Screenshot rendering for 23 special characters: blocks (▀ ▄ █), triangles (▲ ▼), arrows (↑ ↓ → ←), half blocks (▌ ▐)
