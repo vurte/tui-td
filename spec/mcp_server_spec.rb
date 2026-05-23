@@ -1,0 +1,268 @@
+# frozen_string_literal: true
+
+require "fileutils"
+require "spec_helper"
+
+RSpec.describe TUITD::MCP::Server do
+  let(:server) { described_class.new(rows: 10, cols: 40, timeout: 5) }
+
+  def handle(method, params = {}, id: 1)
+    request = { "jsonrpc" => "2.0", "method" => method, "id" => id, "params" => params }
+    server.send(:handle_request, request)
+  end
+
+  describe "#handle_request" do
+    describe "initialize" do
+      it "returns server capabilities" do
+        response = handle("initialize", { "protocolVersion" => "2024-11-05" })
+        expect(response[:result][:protocolVersion]).to eq("2024-11-05")
+        expect(response[:result][:serverInfo][:name]).to eq("tui-td")
+        expect(response[:result][:serverInfo][:version]).to eq(TUITD::VERSION)
+        expect(response[:result][:capabilities]).to have_key(:tools)
+      end
+    end
+
+    describe "notifications/initialized" do
+      it "returns nil (no response needed)" do
+        response = handle("notifications/initialized")
+        expect(response).to be_nil
+      end
+    end
+
+    describe "tools/list" do
+      it "returns the tool list" do
+        response = handle("tools/list")
+        tools = response[:result][:tools]
+        expect(tools).to be_an(Array)
+        expect(tools).not_to be_empty
+
+        tool_names = tools.map { |t| t[:name] }
+        expect(tool_names).to include("tui_start")
+        expect(tool_names).to include("tui_send")
+        expect(tool_names).to include("tui_send_key")
+        expect(tool_names).to include("tui_wait_for_text")
+        expect(tool_names).to include("tui_wait_for_stable")
+        expect(tool_names).to include("tui_state")
+        expect(tool_names).to include("tui_plain_text")
+        expect(tool_names).to include("tui_screenshot")
+        expect(tool_names).to include("tui_html_render")
+        expect(tool_names).to include("tui_close")
+      end
+    end
+
+    describe "tools/call" do
+      it "returns error for unknown tool" do
+        response = handle("tools/call", { "name" => "nonexistent", "arguments" => {} })
+        expect(response[:error][:code]).to eq(-32602)
+        expect(response[:error][:message]).to include("Unknown tool")
+      end
+
+      it "returns error when calling tui_send without start" do
+        response = handle("tools/call", { "name" => "tui_send", "arguments" => { "text" => "hello" } })
+        expect(response[:result][:content][0][:text]).to include("No TUI session active")
+      end
+
+      it "returns error for tui_send without text argument" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        response = handle("tools/call", { "name" => "tui_send", "arguments" => {} })
+        expect(response[:result][:content][0][:text]).to include("text")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "unknown methods" do
+      it "ignores unknown notification methods" do
+        response = handle("notifications/something")
+        expect(response).to be_nil
+      end
+
+      it "returns error for unknown non-notification methods" do
+        response = handle("unknown_method")
+        expect(response[:error][:code]).to eq(-32601)
+        expect(response[:error][:message]).to include("Method not found")
+      end
+    end
+  end
+
+  describe "tool implementations" do
+    describe "tui_start" do
+      it "starts a process and returns its output" do
+        result = server.send(:call_tui_start, { "command" => "echo hello world" })
+        expect(result).to include("OK: Started")
+        expect(result).to include("hello world")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns error when command is missing" do
+        result = server.send(:call_tui_start, {})
+        expect(result).to include("ERROR")
+        expect(result).to include("command")
+      end
+
+      it "closes previous session before starting a new one" do
+        server.send(:call_tui_start, { "command" => "echo first" })
+        first = server.send(:call_tui_plain_text)
+        server.send(:call_tui_start, { "command" => "echo second" })
+        second = server.send(:call_tui_plain_text)
+        expect(second).not_to eq(first)
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_send" do
+      it "returns error when text is missing" do
+        server.send(:call_tui_start, { "command" => "echo ok" })
+        result = server.send(:call_tui_send, {})
+        expect(result).to include("ERROR")
+      ensure
+        server.send(:call_tui_close) rescue nil
+      end
+    end
+
+    describe "tui_send_key" do
+      it "returns error when key is missing" do
+        server.send(:call_tui_start, { "command" => "echo ok" })
+        result = server.send(:call_tui_send_key, {})
+        expect(result).to include("ERROR")
+      ensure
+        server.send(:call_tui_close) rescue nil
+      end
+
+      it "returns error when send_key used before start" do
+        response = handle("tools/call", { "name" => "tui_send_key", "arguments" => { "key" => "enter" } })
+        expect(response[:result][:content][0][:text]).to include("No TUI session active")
+      end
+    end
+
+    describe "tui_wait_for_text" do
+      it "waits for text in output" do
+        server.send(:call_tui_start, { "command" => "echo hello && echo world" })
+        result = server.send(:call_tui_wait_for_text, { "text" => "world" })
+        expect(result).to include("hello")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_wait_for_stable" do
+      it "waits for output to stabilize" do
+        server.send(:call_tui_start, { "command" => "echo done" })
+        result = server.send(:call_tui_wait_for_stable, {})
+        expect(result).to include("done")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_state" do
+      it "returns state in AI format by default" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_state, {})
+        parsed = JSON.parse(result)
+        expect(parsed).to have_key("text")
+        expect(parsed).to have_key("highlights")
+        expect(parsed).to have_key("size")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns state in full format" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_state, { "format" => "full" })
+        parsed = JSON.parse(result)
+        expect(parsed).to have_key("rows")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns state in text format" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_state, { "format" => "text" })
+        expect(result).to be_a(String)
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_plain_text" do
+      it "returns plain text of terminal" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_plain_text)
+        expect(result).to include("hello")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_screenshot" do
+      it "saves a screenshot" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        path = "/tmp/tui_td_mcp_test_screenshot.png"
+        FileUtils.rm_f(path)
+        result = server.send(:call_tui_screenshot, { "path" => path })
+        expect(result).to include("OK: Screenshot saved")
+        expect(File.exist?(path)).to be true
+        expect(File.size(path)).to be > 0
+        FileUtils.rm_f(path)
+      ensure
+        server.send(:call_tui_close) rescue nil
+        FileUtils.rm_f(path) if path && File.exist?(path)
+      end
+    end
+
+    describe "tui_html_render" do
+      it "returns inline HTML when no path given" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_html_render, {})
+        expect(result).to include("<!DOCTYPE html>")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "saves HTML to a file when path given" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        path = "/tmp/tui_td_mcp_test_page.html"
+        FileUtils.rm_f(path)
+        result = server.send(:call_tui_html_render, { "path" => path })
+        expect(result).to include("OK: HTML saved")
+        expect(File.exist?(path)).to be true
+        expect(File.size(path)).to be > 0
+      ensure
+        server.send(:call_tui_close) rescue nil
+        FileUtils.rm_f(path) if path
+      end
+    end
+
+    describe "tui_close" do
+      it "closes the session" do
+        server.send(:call_tui_start, { "command" => "echo ok" })
+        result = server.send(:call_tui_close)
+        expect(result).to include("OK: TUI session closed")
+      end
+
+      it "is safe to call without a session" do
+        result = server.send(:call_tui_close)
+        expect(result).to include("OK: TUI session closed")
+      end
+    end
+  end
+
+  describe "#error_response" do
+    it "returns a properly formatted JSON-RPC error" do
+      response = server.send(:error_response, 1, -32600, "Invalid Request")
+      expect(response[:jsonrpc]).to eq("2.0")
+      expect(response[:id]).to eq(1)
+      expect(response[:error][:code]).to eq(-32600)
+      expect(response[:error][:message]).to eq("Invalid Request")
+    end
+  end
+
+  describe "#ensure_driver!" do
+    it "raises Error when no driver is active" do
+      expect { server.send(:ensure_driver!) }.to raise_error(TUITD::Error, /No TUI session/)
+    end
+  end
+end
