@@ -96,17 +96,28 @@ module TUITD
       refresh_state!
     end
 
-    # Wait for output to stabilize (no new data for N milliseconds)
+    # Wait for output to stabilize (grid content unchanged for N milliseconds)
     def wait_for_stable(stable_ms: 300)
       deadline = monotonic + @timeout
       last_change = monotonic
+      last_grid = nil
 
       loop do
         raise TimeoutError, "Timeout waiting for stable output" if monotonic > deadline
 
-        if read_available!
-          last_change = monotonic
-        elsif (monotonic - last_change) * 1000 >= stable_ms
+        had_data = read_available!
+        process_alive = process_alive?
+
+        if had_data
+          current_grid = parse_grid_snapshot
+          if current_grid != last_grid
+            last_grid = current_grid
+            last_change = monotonic
+          end
+        elsif !process_alive
+          # Process exited and no more data — final state reached
+          break
+        elsif last_grid && (monotonic - last_change) * 1000 >= stable_ms
           break
         end
 
@@ -244,6 +255,19 @@ module TUITD
         @state = ANSIParser.parse(@output_buffer, @rows, @cols)
         @state[:raw] = @output_buffer.dup
       end
+    end
+
+    def parse_grid_snapshot
+      @output_mutex.synchronize do
+        ANSIParser.parse(@output_buffer, @rows, @cols)[:rows]
+      end
+    end
+
+    def process_alive?
+      return false unless @pid
+      Process.waitpid(@pid, Process::WNOHANG).nil?
+    rescue Errno::ECHILD
+      false
     end
 
     def monotonic

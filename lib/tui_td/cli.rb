@@ -211,8 +211,18 @@ module TUITD
       cmd = args.join(" ")
 
       driver = Driver.new(cmd, **globals.slice(:rows, :cols, :timeout, :chdir))
-      driver.start
-      driver.wait_for_stable
+      begin
+        driver.start
+      rescue TimeoutError
+        # Interactive TUI that never stabilizes (e.g., glow without -p).
+        # Proceed with whatever was rendered before the timeout.
+        driver.refresh
+      end
+      begin
+        driver.wait_for_stable
+      rescue TimeoutError
+        # Ignored — already have rendered state from start
+      end
 
       case globals[:format]
       when :json
