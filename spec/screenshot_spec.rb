@@ -394,4 +394,67 @@ RSpec.describe TUITD::Screenshot do
       expect(png[0, 15]).to eq(ChunkyPNG::Color.rgb(255, 255, 255))
     end
   end
+
+  describe "unicode character rendering" do
+    let(:empty_state) do
+      {
+        size: { rows: 1, cols: 5 },
+        cursor: { row: 0, col: 0 },
+        rows: [
+          Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
+        ]
+      }
+    end
+
+    before do
+      @output_path = "/tmp/tui_td_test_unicode_screenshot.png"
+    end
+
+    after do
+      File.delete(@output_path) if File.exist?(@output_path)
+    end
+
+    it "renders a Greek character (non-ASCII) when Cairo is available" do
+      skip "Cairo not available" unless TUITD::CairoRenderer.available?
+
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "α" # Greek alpha
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(@output_path)
+      png = ChunkyPNG::Image.from_file(@output_path)
+
+      # Cairo anti-aliases, so check for any non-black pixel (not exact white)
+      non_black = (0...16).sum { |y| (0...8).count { |x| png[x, y] != ChunkyPNG::Color::BLACK } }
+      expect(non_black).to be > 0
+    end
+
+    it "renders a CJK character (non-ASCII) when Cairo is available" do
+      skip "Cairo not available" unless TUITD::CairoRenderer.available?
+
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "中" # CJK: 中
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(@output_path)
+      png = ChunkyPNG::Image.from_file(@output_path)
+
+      non_black = (0...16).sum { |y| (0...8).count { |x| png[x, y] != ChunkyPNG::Color::BLACK } }
+      expect(non_black).to be > 0
+    end
+
+    it "silently drops non-ASCII characters when Cairo is not available" do
+      skip "Cairo is available on this system" if TUITD::CairoRenderer.available?
+
+      state = Marshal.load(Marshal.dump(empty_state))
+      state[:rows][0][0][:char] = "α"
+      state[:rows][0][0][:fg] = "white"
+
+      described_class.new(state).render(@output_path)
+      png = ChunkyPNG::Image.from_file(@output_path)
+
+      non_black = (0...16).sum { |y| (0...8).count { |x| png[x, y] != ChunkyPNG::Color::BLACK } }
+      expect(non_black).to eq(0)
+    end
+  end
 end

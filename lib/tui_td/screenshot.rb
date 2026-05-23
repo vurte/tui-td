@@ -2,6 +2,7 @@
 
 require "chunky_png"
 require_relative "ansi_utils"
+require_relative "cairo_renderer"
 
 module TUITD
   class Screenshot
@@ -356,12 +357,22 @@ module TUITD
         return
       end
 
-      return if char == " " || char_ord < 32 || char_ord > 126
+      return if char == " " || char_ord < 32
 
-      rows_data = glyph_rows(char)
-      return unless rows_data
+      # ASCII printable (33-126): use Spleen bitmap font (pixel-perfect)
+      if char_ord <= 126
+        rows_data = glyph_rows(char)
+        if rows_data
+          draw_glyph(image, px, py, rows_data, fg_rgb, bold: bold, italic: italic)
+          draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+          return
+        end
+      end
 
-      draw_glyph(image, px, py, rows_data, fg_rgb, bold: bold, italic: italic)
+      # Fallback: render any Unicode character via Cairo
+      if CairoRenderer.available?
+        CairoRenderer.render_glyph_onto(image, px, py, char, fg_rgb, bold: bold, italic: italic)
+      end
 
       draw_underline(image, px, py, CELL_W, fg_rgb) if underline
     end
