@@ -3,6 +3,7 @@
 require "chunky_png"
 require_relative "ansi_utils"
 require_relative "cairo_renderer"
+require_relative "unifont_glyphs"
 
 module TUITD
   class Screenshot
@@ -369,7 +370,17 @@ module TUITD
         end
       end
 
-      # Fallback: render any Unicode character via Cairo
+      # Unicode (127+): try Unifont bitmap first (pixel-perfect like Spleen)
+      if char_ord > 126
+        unifont_rows = UnifontGlyphs.rows(char_ord)
+        if unifont_rows
+          draw_glyph(image, px, py, unifont_rows, fg_rgb, bold: bold, italic: italic)
+          draw_underline(image, px, py, CELL_W, fg_rgb) if underline
+          return
+        end
+      end
+
+      # Fallback: render via Cairo for characters not in Unifont
       if CairoRenderer.available?
         CairoRenderer.render_glyph_onto(image, px, py, char, fg_rgb, bold: bold, italic: italic)
       end
