@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.2.9
+
+- Fix: `wait_for_stable` uses parsed terminal grid comparison instead of raw byte arrival, preventing interactive TUIs that repaint cell-by-cell (e.g., glow) from timing out
+- Fix: `cmd_capture` catches timeout for interactive TUIs and proceeds with whatever was rendered
+- New tests for `driver.rb` (39), `cli.rb` (19), and `mcp/server.rb` (27) — 85 new tests total
+
 ## 0.2.8
 
 - Unicode bitmap font in screenshot renderer: 2766 glyphs from GNU Unifont 17.0.04 covering Latin, Greek, Cyrillic, Arabic, Turkish, Math, Arrows, Box Drawing, Symbols, and Dingbats
