@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.2.10
+
+- Three new MCP tools: `tui_wait_for_exit` (wait for process to end), `tui_exit_status` (get exit code), `tui_find_text` (search terminal state for text/regex matches)
+- Document `tui_html_render` MCP tool in README (was already implemented but missing from docs)
+- Smoke test expanded to 63 assertions covering all 13 MCP tools including new ones
+
 ## 0.2.9
 
 - Fix: `wait_for_stable` uses parsed terminal grid comparison instead of raw byte arrival, preventing interactive TUIs that repaint cell-by-cell (e.g., glow) from timing out
