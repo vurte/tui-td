@@ -1,0 +1,12 @@
+{
+  "name": "Echo hello world",
+  "rows": 10,
+  "cols": 60,
+  "timeout": 10,
+  "steps": [
+    { "start": "echo hello world" },
+    { "wait_for_stable": true },
+    { "assert_text": "hello" },
+    { "close": true }
+  ]
+}

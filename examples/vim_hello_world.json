@@ -1,0 +1,19 @@
+{
+  "name": "vim: Hello World → Hello Sun",
+  "rows": 24,
+  "cols": 80,
+  "timeout": 15,
+  "steps": [
+    {"start": "vim -u NONE -i NONE /tmp/tui_td_vim_test.txt"},
+    {"wait_for_stable": true},
+    {"send_key": "i"},
+    {"send": "Hello World"},
+    {"send_key": "escape"},
+    {"send": "yy"},
+    {"send": "p"},
+    {"send": ":s/World/Sun\n"},
+    {"send": ":wq\n"},
+    {"wait_for_stable": true},
+    {"close": true}
+  ]
+}
