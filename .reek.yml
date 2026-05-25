@@ -1,0 +1,22 @@
+---
+detectors:
+  IrresponsibleModule:
+    enabled: false
+  TooManyConstants:
+    enabled: false
+  TooManyStatements:
+    max_statements: 10
+  DuplicateMethodCall:
+    max_calls: 3
+    allow_calls:
+      - "@grid"
+      - "@grid[row]"
+
+exclude_paths:
+  - vendor
+  - tmp
+  - bin
+  - examples
+  - lib/tui_td/unifont_glyphs.rb
+  - spec
+  - test

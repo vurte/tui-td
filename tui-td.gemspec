@@ -21,24 +21,27 @@ Gem::Specification.new do |spec|
   spec.metadata["homepage_uri"] = spec.homepage
   spec.metadata["source_code_uri"] = spec.homepage
   spec.metadata["changelog_uri"] = "#{spec.homepage}/blob/main/CHANGELOG.md"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
   spec.files = Dir[
     "lib/**/*.rb",
     "bin/*",
     "README.md",
     "LICENSE.txt",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
   ]
   spec.bindir = "bin"
   spec.executables = ["tui-td"]
   spec.require_paths = ["lib"]
 
+  spec.add_dependency "chunky_png", "~> 1.4"
   spec.add_dependency "io-console", "~> 0.7"
   spec.add_dependency "json", "~> 2.0"
   spec.add_dependency "stringio", "~> 3.0"
-  spec.add_dependency "chunky_png", "~> 1.4"
 
-  spec.add_development_dependency "rspec", "~> 3.12"
+  spec.add_development_dependency "bundler-audit", "~> 0.9"
   spec.add_development_dependency "pry", "~> 0.14"
+  spec.add_development_dependency "reek", "~> 6.3"
+  spec.add_development_dependency "rspec", "~> 3.12"
   spec.add_development_dependency "rubocop", "~> 1.50"
 end

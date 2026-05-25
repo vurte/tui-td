@@ -67,7 +67,7 @@ RSpec.describe TUITD::HtmlRenderer do
     it "merges adjacent identically-styled cells into runs" do
       html = described_class.new(basic_state).to_html
       # First two cells ("H" and "i") have same style, should be in one span
-      match = html.match(/<span[^>]*>Hi<\/span>/)
+      match = html.match(%r{<span[^>]*>Hi</span>})
       expect(match).not_to be_nil, "Expected adjacent cyan bold 'H' and 'i' to be merged into one span"
     end
 
@@ -183,7 +183,8 @@ RSpec.describe TUITD::HtmlRenderer do
         "size" => { "rows" => 1, "cols" => 1 },
         "cursor" => { "row" => 0, "col" => 0 },
         "rows" => [
-          [{ "char" => "S", "fg" => "red", "bg" => "default", "bold" => false, "italic" => false, "underline" => false }],
+          [{ "char" => "S", "fg" => "red", "bg" => "default", "bold" => false, "italic" => false,
+             "underline" => false, }],
         ],
       }
       html = described_class.new(state).to_html
@@ -198,8 +199,8 @@ RSpec.describe TUITD::HtmlRenderer do
           [
             { char: "B", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: true },
             { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false },
-          ]
-        ]
+          ],
+        ],
       }
       html = described_class.new(state).to_html
       expect(html).to include("class=\"term-blink\"")
@@ -210,8 +211,8 @@ RSpec.describe TUITD::HtmlRenderer do
         size: { rows: 1, cols: 1 },
         cursor: { row: 0, col: 0, visible: false },
         rows: [
-          [{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]
-        ]
+          [{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }],
+        ],
       }
       html = described_class.new(state).to_html
       expect(html).to include("cursor-hidden")
@@ -222,7 +223,7 @@ RSpec.describe TUITD::HtmlRenderer do
       state_block = {
         size: { rows: 1, cols: 1 },
         cursor: { row: 0, col: 0, style: 2 }, # steady block
-        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]]
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
       }
       html_block = described_class.new(state_block).to_html
       expect(html_block).to include("cursor-block")
@@ -232,7 +233,7 @@ RSpec.describe TUITD::HtmlRenderer do
       state_ul = {
         size: { rows: 1, cols: 1 },
         cursor: { row: 0, col: 0, style: 3 }, # blinking underline
-        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]]
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
       }
       html_ul = described_class.new(state_ul).to_html
       expect(html_ul).to include("cursor-underline blink")

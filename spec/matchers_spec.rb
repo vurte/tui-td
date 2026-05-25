@@ -16,7 +16,7 @@ RSpec.describe TUITD::Matchers do
     TUITD::State.new(
       size: { rows: rows, cols: cols },
       cursor: cursor,
-      rows: grid || make_grid(rows, cols)
+      rows: grid || make_grid(rows, cols),
     )
   end
 

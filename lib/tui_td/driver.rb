@@ -1,5 +1,8 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+# rubocop:disable Naming/PredicateMethod
+
 require "pty"
 require "io/console"
 require "json"
@@ -38,12 +41,13 @@ module TUITD
 
     # Start the TUI application in a PTY
     def start
-      env = { "TERM" => "xterm-256color", "COLUMNS" => @cols.to_s, "LINES" => @rows.to_s }.merge(@env.transform_keys(&:to_s))
+      env = { "TERM" => "xterm-256color", "COLUMNS" => @cols.to_s,
+              "LINES" => @rows.to_s, }.merge(@env.transform_keys(&:to_s))
       spawn_opts = {}
       spawn_opts[:chdir] = @chdir if @chdir
 
       @stdout, @stdin, @pid = PTY.spawn(env, @command, spawn_opts)
-      @stdout.winsize = [@rows, @cols]  # Set PTY window size for TUIs that check winsize
+      @stdout.winsize = [@rows, @cols] # Set PTY window size for TUIs that check winsize
       @wait_thr = Process.detach(@pid)
 
       # Read until initial output stabilizes
@@ -88,9 +92,11 @@ module TUITD
       deadline = monotonic + @timeout
       loop do
         raise TimeoutError, "Timeout waiting for: #{text.inspect}" if monotonic > deadline
+
         read_available!
         found = @output_mutex.synchronize { @output_buffer.include?(text) }
         break if found
+
         sleep 0.05
       end
       refresh_state!
@@ -117,7 +123,7 @@ module TUITD
         elsif !process_alive
           # Process exited and no more data — final state reached
           break
-        elsif last_grid && (monotonic - last_change) * 1000 >= stable_ms
+        elsif last_grid && (monotonic - last_change) * 1000 >= stable_ms # rubocop:disable Lint/DuplicateBranch
           break
         end
 
@@ -134,6 +140,7 @@ module TUITD
     # Get the process exit status (nil if still running)
     def exitstatus
       return nil unless @wait_thr
+
       status = @wait_thr.value
       status&.exitstatus
     rescue NoMethodError
@@ -179,16 +186,32 @@ module TUITD
       if @pid
         begin
           if Process.waitpid(@pid, Process::WNOHANG).nil?
-            Process.kill("TERM", @pid) rescue nil
+            begin
+              Process.kill("TERM", @pid)
+            rescue StandardError
+              nil
+            end
             sleep 0.05
-            Process.kill("KILL", @pid) rescue nil
+            begin
+              Process.kill("KILL", @pid)
+            rescue StandardError
+              nil
+            end
           end
         rescue Errno::ECHILD
           # Already reaped by Process.detach
         end
       end
-      @stdin&.close rescue nil
-      @stdout&.close rescue nil
+      begin
+        @stdin&.close
+      rescue StandardError
+        nil
+      end
+      begin
+        @stdout&.close
+      rescue StandardError
+        nil
+      end
       @stdin = @stdout = @pid = nil
     end
 
@@ -199,6 +222,7 @@ module TUITD
       @reader_thread = Thread.new do
         loop do
           break unless @reader_running
+
           begin
             read_available!
           rescue IOError, Errno::EIO
@@ -211,11 +235,15 @@ module TUITD
 
     def _stop_reader_thread
       @reader_running = false
-      if @reader_thread
-        @reader_thread.join(1)
-        @reader_thread.kill rescue nil
-        @reader_thread = nil
+      return unless @reader_thread
+
+      @reader_thread.join(1)
+      begin
+        @reader_thread.kill
+      rescue StandardError
+        nil
       end
+      @reader_thread = nil
     end
 
     def ensure_running!
@@ -265,6 +293,7 @@ module TUITD
 
     def process_alive?
       return false unless @pid
+
       Process.waitpid(@pid, Process::WNOHANG).nil?
     rescue Errno::ECHILD
       false
@@ -273,7 +302,9 @@ module TUITD
     def monotonic
       Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
-    end
+  end
 
   class TimeoutError < Error; end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+# rubocop:enable Naming/PredicateMethod

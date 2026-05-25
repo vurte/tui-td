@@ -27,21 +27,21 @@ RSpec.describe TUITD::CairoRenderer do
     end
 
     it "renders Greek characters without error" do
-      expect {
+      expect do
         described_class.render_glyph_onto(png, 0, 0, "α", white, bold: false, italic: false)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it "renders Cyrillic characters without error" do
-      expect {
+      expect do
         described_class.render_glyph_onto(png, 0, 0, "Д", white, bold: false, italic: false)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it "renders CJK characters without error" do
-      expect {
+      expect do
         described_class.render_glyph_onto(png, 0, 0, "中", white, bold: false, italic: false)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it "renders bold text with more pixels than normal" do
@@ -56,16 +56,16 @@ RSpec.describe TUITD::CairoRenderer do
     end
 
     it "renders italic glyphs without error" do
-      expect {
+      expect do
         described_class.render_glyph_onto(png, 0, 0, "A", white, bold: false, italic: true)
-      }.not_to raise_error
+      end.not_to raise_error
     end
 
     it "is a no-op when cairo is not available" do
       skip "Cairo is available on this system" if described_class.available?
-      expect {
+      expect do
         described_class.render_glyph_onto(png, 0, 0, "A", white, bold: false, italic: false)
-      }.not_to raise_error
+      end.not_to raise_error
       colored_pixels = (0...16).sum { |y| (0...8).count { |x| png[x, y] != ChunkyPNG::Color::BLACK } }
       expect(colored_pixels).to eq(0)
     end

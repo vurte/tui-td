@@ -225,14 +225,14 @@ RSpec.describe TUITD::TestRunner do
   describe "JSON string input" do
     it "accepts JSON string" do
       json = JSON.generate({
-        name: "json string",
-        steps: [
-          { start: "echo json" },
-          { wait_for_stable: true },
-          { assert_text: "json" },
-          { close: true },
-        ],
-      })
+                             name: "json string",
+                             steps: [
+                               { start: "echo json" },
+                               { wait_for_stable: true },
+                               { assert_text: "json" },
+                               { close: true },
+                             ],
+                           })
       result = described_class.new(json).run
       expect(result[:passed]).to be true
     end

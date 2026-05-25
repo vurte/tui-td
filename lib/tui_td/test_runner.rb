@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+
 require "json"
 
 module TUITD
@@ -39,10 +41,6 @@ module TUITD
       @on_step = on_step
     rescue JSON::ParserError => e
       raise Error, "Invalid JSON: #{e.message}"
-      @plan[:steps] = @plan[:steps].map { |s| s.transform_keys(&:to_sym) }
-      @plan[:before_all] = @plan[:before_all]&.map { |s| s.transform_keys(&:to_sym) }
-      @plan[:after_all] = @plan[:after_all]&.map { |s| s.transform_keys(&:to_sym) }
-      @on_step = on_step
     end
 
     def run
@@ -55,7 +53,7 @@ module TUITD
       hooks = [
         { label: :before_all, steps: @plan[:before_all] || [] },
         { label: :main, steps: @plan[:steps] },
-        { label: :after_all, steps: @plan[:after_all] || [] }
+        { label: :after_all, steps: @plan[:after_all] || [] },
       ]
 
       all_results = []
@@ -120,7 +118,8 @@ module TUITD
                   if match
                     Result.new(step: action, passed: true, message: "Style at [#{row},#{col}] matches #{expected}")
                   else
-                    Result.new(step: action, passed: false, message: "Style at [#{row},#{col}] is #{actual}, expected #{expected}")
+                    Result.new(step: action, passed: false,
+                               message: "Style at [#{row},#{col}] is #{actual}, expected #{expected}",)
                   end
 
                 when "screenshot"
@@ -159,7 +158,6 @@ module TUITD
                 else
                   Result.new(step: action, passed: false, message: "Unknown action: #{action}")
                 end
-
           rescue StandardError => e
             r = Result.new(step: action, passed: false, message: "#{e.class}: #{e.message}")
           end
@@ -167,23 +165,23 @@ module TUITD
           all_results << r
           all_passed &&= r.passed
 
-          if @on_step
-            state_data = nil
-            begin
-              state_data = driver.state_data if driver
-            rescue StandardError
-              # ignore — state retrieval is best-effort
-            end
-            @on_step.call(
-              index: all_results.size - 1,
-              total: total_steps,
-              action: action,
-              value: value,
-              result: r,
-              driver: driver,
-              state_data: state_data
-            )
+          next unless @on_step
+
+          state_data = nil
+          begin
+            state_data = driver.state_data if driver
+          rescue StandardError
+            # ignore — state retrieval is best-effort
           end
+          @on_step.call(
+            index: all_results.size - 1,
+            total: total_steps,
+            action: action,
+            value: value,
+            result: r,
+            driver: driver,
+            state_data: state_data,
+          )
         end
       end
 
@@ -192,7 +190,7 @@ module TUITD
       {
         name: @plan[:name] || "(unnamed)",
         passed: all_passed,
-        results: all_results.map(&:to_h)
+        results: all_results.map(&:to_h),
       }
     end
 
@@ -261,8 +259,10 @@ module TUITD
       if actual == expected
         Result.new(step: step.keys.first.to_s, passed: true, message: "#{label} at [#{row},#{col}] is #{expected}")
       else
-        Result.new(step: step.keys.first.to_s, passed: false, message: "#{label} at [#{row},#{col}] is #{actual}, expected #{expected}")
+        Result.new(step: step.keys.first.to_s, passed: false,
+                   message: "#{label} at [#{row},#{col}] is #{actual}, expected #{expected}",)
       end
     end
   end
 end
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength

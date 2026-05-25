@@ -13,7 +13,10 @@ RSpec.describe TUITD::State do
     end
 
     it "creates a valid state with correct data" do
-      data = { size: { rows: 2, cols: 10 }, rows: [[{ char: "X", fg: "default", bg: "default", bold: false, italic: false, underline: false }]], cursor: { row: 0, col: 0 } }
+      data = { size: { rows: 2, cols: 10 },
+               rows: [[{ char: "X", fg: "default", bg: "default", bold: false, italic: false,
+                         underline: false, }]],
+               cursor: { row: 0, col: 0 }, }
       state = described_class.new(data)
       expect(state.rows).to eq(2)
       expect(state.cols).to eq(10)
@@ -76,19 +79,6 @@ RSpec.describe TUITD::State do
     end
   end
 
-  describe "#find_text" do
-    it "finds text occurrences" do
-      grid = make_grid(2, 15)
-      "Hello World".chars.each_with_index { |c, i| grid[0][i][:char] = c }
-      grid[1][0][:char] = "H"
-      state = make_state(rows: 2, cols: 15, grid: grid)
-      results = state.find_text("Hello")
-      expect(results.size).to eq(1)
-      expect(results.first[:row]).to eq(0)
-      expect(results.first[:col]).to eq(0)
-    end
-  end
-
   describe "#foreground_at / #background_at / #style_at" do
     it "returns cell colors and styles" do
       grid = make_grid(2, 5)
@@ -120,7 +110,10 @@ RSpec.describe TUITD::State do
 
     it "captures per-line foreground colors" do
       grid = make_grid(3, 10)
-      "cyan text".chars.each_with_index { |c, i| grid[0][i][:char] = c; grid[0][i][:fg] = "cyan" }
+      "cyan text".chars.each_with_index do |c, i|
+        grid[0][i][:char] = c
+        grid[0][i][:fg] = "cyan"
+      end
       state = make_state(rows: 3, cols: 10, grid: grid)
       result = state.to_ai_json
       expect(result[:highlights].size).to eq(1)
@@ -130,9 +123,12 @@ RSpec.describe TUITD::State do
 
     it "captures bold, italic, underline" do
       grid = make_grid(1, 3)
-      grid[0][0][:char] = "B"; grid[0][0][:bold] = true
-      grid[0][1][:char] = "I"; grid[0][1][:italic] = true
-      grid[0][2][:char] = "U"; grid[0][2][:underline] = true
+      grid[0][0][:char] = "B"
+      grid[0][0][:bold] = true
+      grid[0][1][:char] = "I"
+      grid[0][1][:italic] = true
+      grid[0][2][:char] = "U"
+      grid[0][2][:underline] = true
       state = make_state(rows: 1, cols: 3, grid: grid)
       result = state.to_ai_json
       hl = result[:highlights][0]
@@ -143,8 +139,10 @@ RSpec.describe TUITD::State do
 
     it "collects multiple foregrounds as array" do
       grid = make_grid(1, 5)
-      grid[0][0][:char] = "R"; grid[0][0][:fg] = "red"
-      grid[0][1][:char] = "G"; grid[0][1][:fg] = "green"
+      grid[0][0][:char] = "R"
+      grid[0][0][:fg] = "red"
+      grid[0][1][:char] = "G"
+      grid[0][1][:fg] = "green"
       state = make_state(rows: 1, cols: 5, grid: grid)
       result = state.to_ai_json
       hl = result[:highlights][0]
@@ -153,7 +151,8 @@ RSpec.describe TUITD::State do
 
     it "captures background color" do
       grid = make_grid(1, 3)
-      grid[0][1][:char] = "X"; grid[0][1][:bg] = "blue"
+      grid[0][1][:char] = "X"
+      grid[0][1][:bg] = "blue"
       state = make_state(rows: 1, cols: 3, grid: grid)
       result = state.to_ai_json
       expect(result[:highlights][0][:bg]).to eq("blue")
@@ -161,7 +160,8 @@ RSpec.describe TUITD::State do
 
     it "handles TrueColor hex format" do
       grid = make_grid(1, 3)
-      grid[0][0][:char] = "T"; grid[0][0][:fg] = "#ff8800"
+      grid[0][0][:char] = "T"
+      grid[0][0][:fg] = "#ff8800"
       state = make_state(rows: 1, cols: 3, grid: grid)
       result = state.to_ai_json
       expect(result[:highlights][0][:fg]).to eq("#ff8800")
@@ -169,7 +169,8 @@ RSpec.describe TUITD::State do
 
     it "handles 256-color format" do
       grid = make_grid(1, 3)
-      grid[0][0][:char] = "C"; grid[0][0][:fg] = "color82"
+      grid[0][0][:char] = "C"
+      grid[0][0][:fg] = "color82"
       state = make_state(rows: 1, cols: 3, grid: grid)
       result = state.to_ai_json
       expect(result[:highlights][0][:fg]).to eq("color82")
@@ -177,7 +178,10 @@ RSpec.describe TUITD::State do
 
     it "does not highlight rows with only default colors" do
       grid = make_grid(3, 5)
-      grid[0][0][:char] = "n"; grid[0][1][:char] = "o"; grid[0][2][:char] = "p"; grid[0][3][:char] = "e"
+      grid[0][0][:char] = "n"
+      grid[0][1][:char] = "o"
+      grid[0][2][:char] = "p"
+      grid[0][3][:char] = "e"
       state = make_state(rows: 3, cols: 5, grid: grid)
       result = state.to_ai_json
       expect(result[:highlights]).to be_empty
@@ -185,7 +189,9 @@ RSpec.describe TUITD::State do
 
     it "summary mentions cursor and styled rows" do
       grid = make_grid(3, 10)
-      grid[0][0][:char] = "S"; grid[0][0][:fg] = "red"; grid[0][0][:bold] = true
+      grid[0][0][:char] = "S"
+      grid[0][0][:fg] = "red"
+      grid[0][0][:bold] = true
       state = make_state(rows: 3, cols: 10, grid: grid, cursor: { row: 2, col: 5 })
       result = state.to_ai_json
       expect(result[:summary]).to include("[2,5]")
@@ -195,8 +201,10 @@ RSpec.describe TUITD::State do
 
     it "summary lists distinct colors" do
       grid = make_grid(2, 5)
-      grid[0][0][:char] = "A"; grid[0][0][:fg] = "cyan"
-      grid[1][0][:char] = "B"; grid[1][0][:fg] = "cyan"
+      grid[0][0][:char] = "A"
+      grid[0][0][:fg] = "cyan"
+      grid[1][0][:char] = "B"
+      grid[1][0][:fg] = "cyan"
       state = make_state(rows: 2, cols: 5, grid: grid)
       result = state.to_ai_json
       expect(result[:summary]).to include("cyan")
@@ -204,8 +212,10 @@ RSpec.describe TUITD::State do
 
     it "pluralizes 'styled rows' for multiple rows" do
       grid = make_grid(3, 5)
-      grid[0][0][:char] = "A"; grid[0][0][:fg] = "red"
-      grid[1][0][:char] = "B"; grid[1][0][:bold] = true
+      grid[0][0][:char] = "A"
+      grid[0][0][:fg] = "red"
+      grid[1][0][:char] = "B"
+      grid[1][0][:bold] = true
       state = make_state(rows: 3, cols: 5, grid: grid)
       result = state.to_ai_json
       expect(result[:summary]).to include("2 styled rows")
@@ -225,6 +235,17 @@ RSpec.describe TUITD::State do
   end
 
   describe "#find_text" do
+    it "finds text occurrences" do
+      grid = make_grid(2, 15)
+      "Hello World".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      grid[1][0][:char] = "H"
+      state = make_state(rows: 2, cols: 15, grid: grid)
+      results = state.find_text("Hello")
+      expect(results.size).to eq(1)
+      expect(results.first[:row]).to eq(0)
+      expect(results.first[:col]).to eq(0)
+    end
+
     it "finds multiple occurrences on the same row" do
       grid = make_grid(1, 20)
       "aXbXc".chars.each_with_index { |c, i| grid[0][i][:char] = c }
@@ -268,7 +289,7 @@ RSpec.describe TUITD::State do
         rows: make_grid(2, 5),
         cursor: { row: 0, col: 0, visible: false, style: 3 },
         mouse_mode: :drag,
-        mouse_format: :sgr
+        mouse_format: :sgr,
       }
       state = described_class.new(data)
       expect(state.cursor_visible).to be false

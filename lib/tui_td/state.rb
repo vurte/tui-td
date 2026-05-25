@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
 module TUITD
   # Represents the parsed state of a terminal screen.
   # Provides high-level query methods for AI consumption.
@@ -31,6 +33,7 @@ module TUITD
     # Get text at a specific position
     def text_at(row, col, length = @cols - col)
       return "" if row >= @rows || col >= @cols
+
       @grid[row][col, length].map { |c| c[:char] }.join
     end
 
@@ -51,16 +54,19 @@ module TUITD
     # Get the color at a specific cell
     def foreground_at(row, col)
       return nil if row >= @rows || col >= @cols
+
       @grid[row][col][:fg]
     end
 
     def background_at(row, col)
       return nil if row >= @rows || col >= @cols
+
       @grid[row][col][:bg]
     end
 
     def style_at(row, col)
       return nil if row >= @rows || col >= @cols
+
       cell = @grid[row][col]
       { bold: cell[:bold], italic: cell[:italic], underline: cell[:underline] }
     end
@@ -72,12 +78,12 @@ module TUITD
       c = cursor_info[:col] || cursor_info["col"] || 0
       styled_count = h.count { |hl| hl[:bold] || hl[:italic] || hl[:underline] || hl[:fg] || hl[:bg] }
 
-      summary = +"Cursor at [#{r},#{c}]. "
-      summary << "#{styled_count} styled row#{styled_count == 1 ? '' : 's'}"
+      summary = "Cursor at [#{r},#{c}]. "
+      summary << "#{styled_count} styled row#{"s" unless styled_count == 1}"
       fgs = h.flat_map { |hl| hl[:fg] }.compact.uniq
       bgs = h.flat_map { |hl| hl[:bg] }.compact.uniq
-      summary << ", colors: fg=#{fgs.sort.join(',')}" unless fgs.empty?
-      summary << ", bg=#{bgs.sort.join(',')}" unless bgs.empty?
+      summary << ", colors: fg=#{fgs.sort.join(",")}" unless fgs.empty?
+      summary << ", bg=#{bgs.sort.join(",")}" unless bgs.empty?
       summary << "."
 
       {
@@ -119,3 +125,4 @@ module TUITD
     end
   end
 end
+# rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockNesting, Metrics/ParameterLists, Metrics/ClassLength, Metrics/CollectionLiteralLength
+
 require "chunky_png"
 require_relative "ansi_utils"
 require_relative "cairo_renderer"
@@ -200,7 +202,7 @@ module TUITD
       "╧" => [true, false, true, true, :double],
       "╨" => [true, false, true, true, :double],
       "╪" => [true, true, true, true, :double],
-      "╫" => [true, true, true, true, :double]
+      "╫" => [true, true, true, true, :double],
     }.freeze
 
     private_constant :FONT
@@ -219,8 +221,10 @@ module TUITD
 
       @grid.each_with_index do |row, ri|
         next unless row
+
         row.each_with_index do |cell, ci|
           next unless cell
+
           render_cell(image, ri, ci, cell)
         end
       end
@@ -256,15 +260,15 @@ module TUITD
       end
 
       char_ord = char.ord
-      if char_ord == 10095 # '❯'
+      if char_ord == 10_095 # '❯'
         draw_chevron(image, px, py, fg_rgb)
         draw_underline(image, px, py, CELL_W, fg_rgb) if underline
         return
-      elsif char_ord == 9210 || char_ord == 9679 # '⏺' or '●'
+      elsif [9210, 9679].include?(char_ord) # '⏺' or '●'
         draw_circle(image, px, py, fg_rgb)
         draw_underline(image, px, py, CELL_W, fg_rgb) if underline
         return
-      elsif char_ord >= 0x2800 && char_ord <= 0x28ff # Braille spinner
+      elsif char_ord.between?(0x2800, 0x28ff) # Braille spinner
         draw_braille(image, px, py, char, fg_rgb)
         draw_underline(image, px, py, CELL_W, fg_rgb) if underline
         return
@@ -399,7 +403,7 @@ module TUITD
 
     def glyph_rows(char)
       idx = (char.ord - 32) * 16
-      return nil if idx < 0 || idx + 15 >= FONT.length
+      return nil if idx.negative? || idx + 15 >= FONT.length
 
       FONT[idx, 16]
     end
@@ -408,7 +412,7 @@ module TUITD
       color = ChunkyPNG::Color.rgb(*fg_rgb)
 
       rows.each_with_index do |byte, dy|
-        next if byte == 0
+        next if byte.zero?
 
         slant = italic ? dy / 8 : 0
 
@@ -429,7 +433,7 @@ module TUITD
 
     def box_drawing?(char)
       char_ord = char.ord
-      char_ord >= 0x2500 && char_ord <= 0x257F
+      char_ord.between?(0x2500, 0x257F)
     end
 
     def draw_box_character(image, px, py, char, fg_rgb)
@@ -438,10 +442,18 @@ module TUITD
       unless config
         char_ord = char.ord
         if [0x2500, 0x2501, 0x2504, 0x2505, 0x2508, 0x2509, 0x254c, 0x254d, 0x2550].include?(char_ord)
-          style = [0x2501, 0x2505, 0x2509, 0x254d].include?(char_ord) ? :heavy : (char_ord == 0x2550 ? :double : :light)
+          style = if [0x2501, 0x2505, 0x2509, 0x254d].include?(char_ord)
+                    :heavy
+                  else
+                    (char_ord == 0x2550 ? :double : :light)
+                  end
           config = [false, false, true, true, style]
         elsif [0x2502, 0x2503, 0x2506, 0x2507, 0x250a, 0x250b, 0x254e, 0x254f, 0x2551].include?(char_ord)
-          style = [0x2503, 0x2507, 0x250b, 0x254f].include?(char_ord) ? :heavy : (char_ord == 0x2551 ? :double : :light)
+          style = if [0x2503, 0x2507, 0x250b, 0x254f].include?(char_ord)
+                    :heavy
+                  else
+                    (char_ord == 0x2551 ? :double : :light)
+                  end
           config = [true, true, false, false, style]
         else
           config = [true, true, true, true, :light]
@@ -454,24 +466,31 @@ module TUITD
 
       color = ChunkyPNG::Color.rgb(*fg_rgb)
 
-      if style == :double
+      case style
+      when :double
         if left
-          (px..(cx + 2)).each { |x| image[x, py + 6] = color }
-          (px..(cx + 2)).each { |x| image[x, py + 10] = color }
+          (px..(cx + 2)).each do |x|
+            image[x, py + 6] = color
+            image[x, py + 10] = color
+          end
         end
         if right
           ((cx - 2)..(px + 7)).each { |x| image[x, py + 6] = color }
           ((cx - 2)..(px + 10)).each { |x| image[x, py + 10] = color }
         end
         if up
-          (py..(cy + 2)).each { |y| image[px + 2, y] = color }
-          (py..(cy + 2)).each { |y| image[px + 6, y] = color }
+          (py..(cy + 2)).each do |y|
+            image[px + 2, y] = color
+            image[px + 6, y] = color
+          end
         end
         if down
-          ((cy - 2)..(py + 15)).each { |y| image[px + 2, y] = color }
-          ((cy - 2)..(py + 15)).each { |y| image[px + 6, y] = color }
+          ((cy - 2)..(py + 15)).each do |y|
+            image[px + 2, y] = color
+            image[px + 6, y] = color
+          end
         end
-      elsif style == :heavy
+      when :heavy
         if left
           (px..cx).each do |x|
             image[x, cy - 1] = color
@@ -500,42 +519,34 @@ module TUITD
             image[cx + 1, y] = color
           end
         end
-      elsif style == :light_rounded
+      when :light_rounded
         case char
         when "╭"
-          (px + 5..px + 7).each { |x| image[x, py + 8] = color }
-          (py + 10..py + 15).each { |y| image[px + 4, y] = color }
+          ((px + 5)..(px + 7)).each { |x| image[x, py + 8] = color }
+          ((py + 10)..(py + 15)).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 9] = color
           image[px + 5, py + 9] = color
         when "╮"
-          (px..px + 3).each { |x| image[x, py + 8] = color }
-          (py + 10..py + 15).each { |y| image[px + 4, y] = color }
+          (px..(px + 3)).each { |x| image[x, py + 8] = color }
+          ((py + 10)..(py + 15)).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 9] = color
           image[px + 3, py + 9] = color
         when "╯"
-          (px..px + 3).each { |x| image[x, py + 8] = color }
-          (py..py + 6).each { |y| image[px + 4, y] = color }
+          (px..(px + 3)).each { |x| image[x, py + 8] = color }
+          (py..(py + 6)).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 7] = color
           image[px + 3, py + 7] = color
         when "╰"
-          (px + 5..px + 7).each { |x| image[x, py + 8] = color }
-          (py..py + 6).each { |y| image[px + 4, y] = color }
+          ((px + 5)..(px + 7)).each { |x| image[x, py + 8] = color }
+          (py..(py + 6)).each { |y| image[px + 4, y] = color }
           image[px + 4, py + 7] = color
           image[px + 5, py + 7] = color
         end
       else # :light
-        if left
-          (px..cx).each { |x| image[x, cy] = color }
-        end
-        if right
-          (cx..(px + 7)).each { |x| image[x, cy] = color }
-        end
-        if up
-          (py..cy).each { |y| image[cx, y] = color }
-        end
-        if down
-          (cy..(py + 15)).each { |y| image[cx, y] = color }
-        end
+        (px..cx).each { |x| image[x, cy] = color } if left
+        (cx..(px + 7)).each { |x| image[x, cy] = color } if right
+        (py..cy).each { |y| image[cx, y] = color } if up
+        (cy..(py + 15)).each { |y| image[cx, y] = color } if down
       end
     end
 
@@ -551,7 +562,7 @@ module TUITD
       ri = cursor_info[:row] || cursor_info["row"] || 0
       ci = cursor_info[:col] || cursor_info["col"] || 0
 
-      return if ri < 0 || ri >= @rows || ci < 0 || ci >= @cols
+      return if ri.negative? || ri >= @rows || ci.negative? || ci >= @cols
 
       style_val = @state[:cursor_style] || cursor_info[:style] || cursor_info["style"] || 1
 
@@ -568,6 +579,7 @@ module TUITD
             x = px + dx
             y = py + dy
             next if x >= image.width || y >= image.height
+
             original_color = image[x, y]
             r = 255 - ChunkyPNG::Color.r(original_color)
             g = 255 - ChunkyPNG::Color.g(original_color)
@@ -579,9 +591,11 @@ module TUITD
         2.times do |h_offset|
           y = py + CELL_H - 1 - h_offset
           next if y >= image.height
+
           CELL_W.times do |dx|
             x = px + dx
             next if x >= image.width
+
             image[x, y] = color
           end
         end
@@ -589,9 +603,11 @@ module TUITD
         2.times do |w_offset|
           x = px + w_offset
           next if x >= image.width
+
           CELL_H.times do |dy|
             y = py + dy
             next if y >= image.height
+
             image[x, y] = color
           end
         end
@@ -603,7 +619,7 @@ module TUITD
       (0..3).each do |i|
         image[px + 2 + i, py + 4 + i] = color
         image[px + 3 + i, py + 4 + i] = color # bold/thick chevron
-        
+
         image[px + 5 - i, py + 8 + i] = color
         image[px + 6 - i, py + 8 + i] = color # bold/thick chevron
       end
@@ -623,6 +639,7 @@ module TUITD
           x = cx + dx
           y = cy + dy
           next if x < px || x >= px + CELL_W || y < py || y >= py + CELL_H
+
           image[x, y] = color
         end
       end
@@ -639,17 +656,18 @@ module TUITD
         [5, 6],  # Dot 5
         [5, 9],  # Dot 6
         [2, 12], # Dot 7
-        [5, 12]  # Dot 8
+        [5, 12], # Dot 8
       ]
       dot_coords.each_with_index do |(dx, dy), idx|
-        if (mask & (1 << idx)) != 0
-          2.times do |ddy|
-            2.times do |ddx|
-              x = px + dx + ddx
-              y = py + dy + ddy
-              next if x >= image.width || y >= image.height
-              image[x, y] = color
-            end
+        next unless mask.anybits?(1 << idx)
+
+        2.times do |ddy|
+          2.times do |ddx|
+            x = px + dx + ddx
+            y = py + dy + ddy
+            next if x >= image.width || y >= image.height
+
+            image[x, y] = color
           end
         end
       end
@@ -659,7 +677,7 @@ module TUITD
       color = ChunkyPNG::Color.rgb(*fg_rgb)
       (5..8).each do |dy|
         width = dy - 5
-        (4 - width..4 + width).each do |dx|
+        ((4 - width)..(4 + width)).each do |dx|
           image[px + dx, py + dy] = color
         end
       end
@@ -669,7 +687,7 @@ module TUITD
       color = ChunkyPNG::Color.rgb(*fg_rgb)
       (5..8).each do |dy|
         width = 8 - dy
-        (4 - width..4 + width).each do |dx|
+        ((4 - width)..(4 + width)).each do |dx|
           image[px + dx, py + dy] = color
         end
       end
@@ -874,6 +892,6 @@ module TUITD
       image[px + 3, py + 8] = color
       image[px + 4, py + 8] = color
     end
-
   end
 end
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockNesting, Metrics/ParameterLists, Metrics/ClassLength, Metrics/CollectionLiteralLength

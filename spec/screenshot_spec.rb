@@ -17,7 +17,7 @@ RSpec.describe TUITD::Screenshot do
   let(:output_path) { "/tmp/tui_td_test_screenshot.png" }
 
   after do
-    File.delete(output_path) if File.exist?(output_path)
+    FileUtils.rm_f(output_path)
   end
 
   describe "#render" do
@@ -59,7 +59,7 @@ RSpec.describe TUITD::Screenshot do
       png = ChunkyPNG::Image.from_file(output_path)
 
       red = ChunkyPNG::Color.rgb(0xAA, 0x00, 0x00)
-      mid_pixel = png[4, 8]  # center of first cell
+      mid_pixel = png[4, 8] # center of first cell
       expect(mid_pixel).to eq(red)
     end
 
@@ -94,8 +94,8 @@ RSpec.describe TUITD::Screenshot do
       # Bold should have roughly 2x the pixels (overstrike right by 1px)
       expect(bold_colored).to be > normal_colored
     ensure
-      File.delete(normal_path) if File.exist?(normal_path)
-      File.delete(bold_path) if File.exist?(bold_path)
+      FileUtils.rm_f(normal_path)
+      FileUtils.rm_f(bold_path)
     end
 
     it "renders underline" do
@@ -175,19 +175,19 @@ RSpec.describe TUITD::Screenshot do
 
   describe "font data integrity" do
     it "has font data for all printable ASCII characters" do
-      font = TUITD::Screenshot.send(:const_get, :FONT)
-      expect(font.length).to eq(95 * 16)  # 95 chars × 16 rows
+      font = described_class.send(:const_get, :FONT)
+      expect(font.length).to eq(95 * 16) # 95 chars × 16 rows
     end
 
     it "space character is all zeros" do
-      font = TUITD::Screenshot.send(:const_get, :FONT)
+      font = described_class.send(:const_get, :FONT)
       space_rows = font[0, 16]
       expect(space_rows).to all(eq(0))
     end
 
     it "exclamation mark has some pixels set" do
-      font = TUITD::Screenshot.send(:const_get, :FONT)
-      bang_rows = font[16, 16]  # '!' is index 1 (33-32)
+      font = described_class.send(:const_get, :FONT)
+      bang_rows = font[16, 16] # '!' is index 1 (33-32)
       expect(bang_rows.any? { |r| r != 0 }).to be true
     end
   end
@@ -198,7 +198,7 @@ RSpec.describe TUITD::Screenshot do
                     bright_black bright_red bright_green bright_yellow
                     bright_blue bright_magenta bright_cyan bright_white]
       expected.each do |name|
-        expect(TUITD::Screenshot.send(:const_get, :ANSI_RGB)).to have_key(name)
+        expect(described_class.send(:const_get, :ANSI_RGB)).to have_key(name)
       end
     end
   end
@@ -213,7 +213,7 @@ RSpec.describe TUITD::Screenshot do
       png = ChunkyPNG::Image.from_file(output_path)
 
       white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
-      
+
       # The center of the first cell is at cx=4, cy=8
       # '─' should draw a horizontal line through the middle (cy=8)
       line_pixels = 0
@@ -267,9 +267,10 @@ RSpec.describe TUITD::Screenshot do
         cursor: { row: 0, col: 0 },
         rows: Array.new(2) do
           Array.new(30) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
-        end
+        end,
       }
-      chars = ["▀", "▲", "✓", "▄", "█", "▼", "✗", "↑", "↓", "→", "⚙", "⚠", "…", "—", "⠋", "←", "▌", "▐", "☐", "☑", "☒", "ℹ", "✖"]
+      chars = ["▀", "▲", "✓", "▄", "█", "▼", "✗", "↑", "↓", "→", "⚙", "⚠", "…", "—", "⠋", "←", "▌", "▐", "☐", "☑", "☒",
+               "ℹ", "✖",]
       chars.each_with_index do |char, idx|
         state[:rows][0][idx][:char] = char
         state[:rows][0][idx][:fg] = "white"
@@ -279,7 +280,7 @@ RSpec.describe TUITD::Screenshot do
       png = ChunkyPNG::Image.from_file(output_path)
 
       white = ChunkyPNG::Color.rgb(0xAA, 0xAA, 0xAA)
-      
+
       # ▀ (cell 0,0: px=0)
       expect(png[2, 2]).to eq(white)
       expect(png[2, 10]).to eq(ChunkyPNG::Color::BLACK)
@@ -401,8 +402,8 @@ RSpec.describe TUITD::Screenshot do
         size: { rows: 1, cols: 5 },
         cursor: { row: 0, col: 0 },
         rows: [
-          Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
-        ]
+          Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } },
+        ],
       }
     end
 
@@ -411,7 +412,7 @@ RSpec.describe TUITD::Screenshot do
     end
 
     after do
-      File.delete(@output_path) if File.exist?(@output_path)
+      FileUtils.rm_f(@output_path)
     end
 
     it "renders a Greek character (non-ASCII) when Cairo is available" do
@@ -464,8 +465,8 @@ RSpec.describe TUITD::Screenshot do
         size: { rows: 1, cols: 5 },
         cursor: { row: 0, col: 0 },
         rows: [
-          Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } }
-        ]
+          Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } },
+        ],
       }
     end
 
@@ -474,7 +475,7 @@ RSpec.describe TUITD::Screenshot do
     end
 
     after do
-      File.delete(@output_path) if File.exist?(@output_path)
+      FileUtils.rm_f(@output_path)
     end
 
     it "renders a Greek character from Unifont" do

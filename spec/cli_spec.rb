@@ -1,36 +1,38 @@
+# frozen_string_literal: true
+
 require "fileutils"
 require "spec_helper"
 
 RSpec.describe TUITD::CLI do
   describe ".run" do
     it "fails on unknown subcommand" do
-      expect {
+      expect do
         described_class.run(["nonexistent_command"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "fails on capture without arguments" do
-      expect {
+      expect do
         described_class.run(["capture"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "fails on test without arguments" do
-      expect {
+      expect do
         described_class.run(["test"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "fails on run without arguments" do
-      expect {
+      expect do
         described_class.run(["run"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "fails on drive without arguments" do
-      expect {
+      expect do
         described_class.run(["drive"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "prints version with --version" do
@@ -44,18 +46,18 @@ RSpec.describe TUITD::CLI do
     end
 
     it "aborts on unknown help topic" do
-      expect {
-        described_class.run(["help", "nonexistent"])
-      }.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
+      expect do
+        described_class.run(%w[help nonexistent])
+      end.to raise_error(SystemExit) { |e| expect(e.success?).to be false }
     end
 
     it "prints test help" do
-      output = cli_run_capturing_stdout_and_exit(["help", "test"])
+      output = cli_run_capturing_stdout_and_exit(%w[help test])
       expect(output).to include("test")
     end
 
     it "prints rspec help" do
-      output = cli_run_capturing_stdout_and_exit(["help", "rspec"])
+      output = cli_run_capturing_stdout_and_exit(%w[help rspec])
       expect(output).to include("RSpec")
     end
   end

@@ -53,7 +53,7 @@ RSpec.describe TUITD::MCP::Server do
     describe "tools/call" do
       it "returns error for unknown tool" do
         response = handle("tools/call", { "name" => "nonexistent", "arguments" => {} })
-        expect(response[:error][:code]).to eq(-32602)
+        expect(response[:error][:code]).to eq(-32_602)
         expect(response[:error][:message]).to include("Unknown tool")
       end
 
@@ -79,7 +79,7 @@ RSpec.describe TUITD::MCP::Server do
 
       it "returns error for unknown non-notification methods" do
         response = handle("unknown_method")
-        expect(response[:error][:code]).to eq(-32601)
+        expect(response[:error][:code]).to eq(-32_601)
         expect(response[:error][:message]).to include("Method not found")
       end
     end
@@ -118,7 +118,11 @@ RSpec.describe TUITD::MCP::Server do
         result = server.send(:call_tui_send, {})
         expect(result).to include("ERROR")
       ensure
-        server.send(:call_tui_close) rescue nil
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
       end
     end
 
@@ -128,7 +132,11 @@ RSpec.describe TUITD::MCP::Server do
         result = server.send(:call_tui_send_key, {})
         expect(result).to include("ERROR")
       ensure
-        server.send(:call_tui_close) rescue nil
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
       end
 
       it "returns error when send_key used before start" do
@@ -208,7 +216,11 @@ RSpec.describe TUITD::MCP::Server do
         expect(File.size(path)).to be > 0
         FileUtils.rm_f(path)
       ensure
-        server.send(:call_tui_close) rescue nil
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
         FileUtils.rm_f(path) if path && File.exist?(path)
       end
     end
@@ -231,7 +243,11 @@ RSpec.describe TUITD::MCP::Server do
         expect(File.exist?(path)).to be true
         expect(File.size(path)).to be > 0
       ensure
-        server.send(:call_tui_close) rescue nil
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
         FileUtils.rm_f(path) if path
       end
     end
@@ -252,10 +268,10 @@ RSpec.describe TUITD::MCP::Server do
 
   describe "#error_response" do
     it "returns a properly formatted JSON-RPC error" do
-      response = server.send(:error_response, 1, -32600, "Invalid Request")
+      response = server.send(:error_response, 1, -32_600, "Invalid Request")
       expect(response[:jsonrpc]).to eq("2.0")
       expect(response[:id]).to eq(1)
-      expect(response[:error][:code]).to eq(-32600)
+      expect(response[:error][:code]).to eq(-32_600)
       expect(response[:error][:message]).to eq("Invalid Request")
     end
   end

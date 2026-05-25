@@ -1,3 +1,7 @@
+# frozen_string_literal: true
+
+# rubocop:disable Layout/LineLength
+
 # Smoke test for the MCP server.
 # Simulates an MCP client session.
 # Usage: ruby test/mcp_smoke_test.rb
@@ -10,7 +14,7 @@ require "tempfile"
 tests = 0
 passed = 0
 
-def assert(label, condition)
+def assert(label, condition) # rubocop:disable Naming/PredicateMethod
   if condition
     puts "  PASS: #{label}"
     true
@@ -49,9 +53,9 @@ init_req = %({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVe
 responses = simulate_server([init_req])
 r1 = JSON.parse(responses[0])
 tc = 0
-tc += 1 if assert("returns result, not error", r1["result"] != nil)
+tc += 1 if assert("returns result, not error", !r1["result"].nil?)
 tc += 1 if assert("correct protocol version", r1.dig("result", "protocolVersion") == "2024-11-05")
-tc += 1 if assert("has tools capability", r1.dig("result", "capabilities", "tools") != nil)
+tc += 1 if assert("has tools capability", !r1.dig("result", "capabilities", "tools").nil?)
 passed += tc
 tests += 3
 
@@ -68,7 +72,7 @@ expected_tools = %w[tui_start tui_send tui_state tui_close tui_screenshot
                     tui_plain_text tui_html_render tui_wait_for_exit
                     tui_exit_status tui_find_text]
 tc = 0
-tc += 1 if assert("returns tool list", tools.length > 0)
+tc += 1 if assert("returns tool list", tools.length.positive?)
 expected_tools.each do |tname|
   tc += 1 if assert("includes #{tname}", tool_names.include?(tname))
 end
@@ -81,16 +85,16 @@ unknown_req = %({"jsonrpc":"2.0","id":3,"method":"bogus"})
 responses = simulate_server([unknown_req])
 r3 = JSON.parse(responses[0])
 tc = 0
-tc += 1 if assert("returns error for unknown method", r3["error"] != nil)
-tc += 1 if assert("error code -32601", r3.dig("error", "code") == -32601)
+tc += 1 if assert("returns error for unknown method", !r3["error"].nil?)
+tc += 1 if assert("error code -32601", r3.dig("error", "code") == -32_601)
 passed += tc
 tests += 2
 
 # -- Test 4: tui_start ---------------------------------------------
 puts "\nTest 4: tui_start actual command"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}})
-])
+                              %({"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                            ])
 r4 = JSON.parse(responses[0], symbolize_names: true)
 result_text = r4.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -102,9 +106,9 @@ tests += 2
 # -- Test 5: tui_state ---------------------------------------------
 puts "\nTest 5: tui_state"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"tui_state","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"tui_state","arguments":{}}}),
+                            ])
 r5 = JSON.parse(responses[1], symbolize_names: true)
 state_text = r5.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -116,9 +120,9 @@ tests += 2
 # -- Test 6: tui_close ---------------------------------------------
 puts "\nTest 6: tui_close"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"tui_close","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"tui_close","arguments":{}}}),
+                            ])
 r6 = JSON.parse(responses[1], symbolize_names: true)
 close_text = r6.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -130,9 +134,9 @@ tests += 2
 # -- Test 7: tui_send ----------------------------------------------
 puts "\nTest 7: tui_send"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
-  %({"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"tui_send","arguments":{"text":"hello world"}}})
-])
+                              %({"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
+                              %({"jsonrpc":"2.0","id":10,"method":"tools/call","params":{"name":"tui_send","arguments":{"text":"hello world"}}}),
+                            ])
 r7 = JSON.parse(responses[1], symbolize_names: true)
 send_text = r7.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -144,9 +148,9 @@ tests += 2
 # -- Test 8: tui_send_key ------------------------------------------
 puts "\nTest 8: tui_send_key"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
-  %({"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"tui_send_key","arguments":{"key":"enter"}}})
-])
+                              %({"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
+                              %({"jsonrpc":"2.0","id":12,"method":"tools/call","params":{"name":"tui_send_key","arguments":{"key":"enter"}}}),
+                            ])
 r8 = JSON.parse(responses[1], symbolize_names: true)
 key_text = r8.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -158,9 +162,9 @@ tests += 2
 # -- Test 9: tui_wait_for_text -------------------------------------
 puts "\nTest 9: tui_wait_for_text"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"tui_wait_for_text","arguments":{"text":"hello"}}})
-])
+                              %({"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"name":"tui_wait_for_text","arguments":{"text":"hello"}}}),
+                            ])
 r9 = JSON.parse(responses[1], symbolize_names: true)
 wait_text = r9.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -172,13 +176,13 @@ tests += 2
 # -- Test 10: tui_wait_for_stable ----------------------------------
 puts "\nTest 10: tui_wait_for_stable"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"tui_wait_for_stable","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":15,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":16,"method":"tools/call","params":{"name":"tui_wait_for_stable","arguments":{}}}),
+                            ])
 r10 = JSON.parse(responses[1], symbolize_names: true)
 stable_text = r10.dig(:result, :content, 0, :text) || ""
 tc = 0
-tc += 1 if assert("tui_wait_for_stable returns output", stable_text.length > 0)
+tc += 1 if assert("tui_wait_for_stable returns output", stable_text.length.positive?)
 tc += 1 if assert("contains hello after stable", stable_text.include?("hello"))
 tc += 1 if assert("no error after stable", !stable_text.start_with?("TIMEOUT") && !stable_text.start_with?("ERROR"))
 passed += tc
@@ -187,9 +191,9 @@ tests += 3
 # -- Test 11: tui_plain_text ---------------------------------------
 puts "\nTest 11: tui_plain_text"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"name":"tui_plain_text","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"name":"tui_plain_text","arguments":{}}}),
+                            ])
 r11 = JSON.parse(responses[1], symbolize_names: true)
 plain_text = r11.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -202,25 +206,25 @@ tests += 2
 puts "\nTest 12: tui_screenshot"
 tmpfile = "/tmp/tui_td_smoke_test_#{Process.pid}.png"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"tui_screenshot","arguments":{"path":"#{tmpfile}"}}})
-])
+                              %({"jsonrpc":"2.0","id":19,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":20,"method":"tools/call","params":{"name":"tui_screenshot","arguments":{"path":"#{tmpfile}"}}}),
+                            ])
 r12 = JSON.parse(responses[1], symbolize_names: true)
 shot_text = r12.dig(:result, :content, 0, :text) || ""
 tc = 0
 tc += 1 if assert("screenshot returns OK", shot_text.start_with?("OK"))
 tc += 1 if assert("screenshot file exists", File.exist?(tmpfile))
-tc += 1 if assert("screenshot file non-empty", File.size(tmpfile) > 0)
-File.delete(tmpfile) if File.exist?(tmpfile)
+tc += 1 if assert("screenshot file non-empty", File.size(tmpfile).positive?)
+FileUtils.rm_f(tmpfile)
 passed += tc
 tests += 3
 
 # -- Test 13: tui_html_render inline -------------------------------
 puts "\nTest 13: tui_html_render (inline)"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"tui_html_render","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":21,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":22,"method":"tools/call","params":{"name":"tui_html_render","arguments":{}}}),
+                            ])
 r13 = JSON.parse(responses[1], symbolize_names: true)
 html_text = r13.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -234,25 +238,25 @@ tests += 3
 puts "\nTest 14: tui_html_render (to file)"
 tmphtml = "/tmp/tui_td_smoke_html_#{Process.pid}.html"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"tui_html_render","arguments":{"path":"#{tmphtml}"}}})
-])
+                              %({"jsonrpc":"2.0","id":23,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":24,"method":"tools/call","params":{"name":"tui_html_render","arguments":{"path":"#{tmphtml}"}}}),
+                            ])
 r14 = JSON.parse(responses[1], symbolize_names: true)
 html_file_text = r14.dig(:result, :content, 0, :text) || ""
 tc = 0
 tc += 1 if assert("HTML file returns OK", html_file_text.start_with?("OK"))
 tc += 1 if assert("HTML file exists", File.exist?(tmphtml))
 tc += 1 if assert("HTML file contains <html>", File.read(tmphtml).include?("<html"))
-File.delete(tmphtml) if File.exist?(tmphtml)
+FileUtils.rm_f(tmphtml)
 passed += tc
 tests += 3
 
 # -- Test 15: tui_state with format "text" -------------------------
 puts "\nTest 15: tui_state format=text"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":25,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":26,"method":"tools/call","params":{"name":"tui_state","arguments":{"format":"text"}}})
-])
+                              %({"jsonrpc":"2.0","id":25,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":26,"method":"tools/call","params":{"name":"tui_state","arguments":{"format":"text"}}}),
+                            ])
 r15 = JSON.parse(responses[1], symbolize_names: true)
 text_format = r15.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -264,9 +268,9 @@ tests += 2
 # -- Test 16: tui_state with format "full" -------------------------
 puts "\nTest 16: tui_state format=full"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"tui_state","arguments":{"format":"full"}}})
-])
+                              %({"jsonrpc":"2.0","id":27,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":28,"method":"tools/call","params":{"name":"tui_state","arguments":{"format":"full"}}}),
+                            ])
 r16 = JSON.parse(responses[1], symbolize_names: true)
 full_text = r16.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -285,8 +289,8 @@ req = %({"jsonrpc":"2.0","id":29,"method":"tools/call","params":{"name":"bogus_t
 responses = simulate_server([req])
 r17 = JSON.parse(responses[0], symbolize_names: true)
 tc = 0
-tc += 1 if assert("unknown tool returns error", r17[:error] != nil)
-tc += 1 if assert("error code -32602", r17.dig(:error, :code) == -32602)
+tc += 1 if assert("unknown tool returns error", !r17[:error].nil?)
+tc += 1 if assert("error code -32602", r17.dig(:error, :code) == -32_602)
 passed += tc
 tests += 2
 
@@ -298,16 +302,17 @@ r18 = JSON.parse(responses[0], symbolize_names: true)
 err_text = r18.dig(:result, :content, 0, :text) || ""
 tc = 0
 tc += 1 if assert("returns ERROR for missing session", err_text.start_with?("ERROR"))
-tc += 1 if assert("mentions tui_start", err_text.include?("tui_start") || err_text.include?("session") || err_text.include?("No TUI"))
+tc += 1 if assert("mentions tui_start",
+                  err_text.include?("tui_start") || err_text.include?("session") || err_text.include?("No TUI"),)
 passed += tc
 tests += 2
 
 # -- Test 19: Missing required argument ----------------------------
 puts "\nTest 19: Missing required argument"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
-  %({"jsonrpc":"2.0","id":32,"method":"tools/call","params":{"name":"tui_send","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":31,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"cat"}}}),
+                              %({"jsonrpc":"2.0","id":32,"method":"tools/call","params":{"name":"tui_send","arguments":{}}}),
+                            ])
 r19 = JSON.parse(responses[1], symbolize_names: true)
 missing_text = r19.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -341,9 +346,9 @@ tests += 1
 # -- Test 22: tui_wait_for_exit ------------------------------------
 puts "\nTest 22: tui_wait_for_exit"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":35,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo done"}}}),
-  %({"jsonrpc":"2.0","id":36,"method":"tools/call","params":{"name":"tui_wait_for_exit","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":35,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo done"}}}),
+                              %({"jsonrpc":"2.0","id":36,"method":"tools/call","params":{"name":"tui_wait_for_exit","arguments":{}}}),
+                            ])
 r22 = JSON.parse(responses[1], symbolize_names: true)
 exit_text = r22.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -355,22 +360,23 @@ tests += 2
 # -- Test 23: tui_exit_status while running ------------------------
 puts "\nTest 23: tui_exit_status (running)"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":37,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"sleep 5"}}}),
-  %({"jsonrpc":"2.0","id":38,"method":"tools/call","params":{"name":"tui_exit_status","arguments":{}}})
-])
+                              %({"jsonrpc":"2.0","id":37,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"sleep 5"}}}),
+                              %({"jsonrpc":"2.0","id":38,"method":"tools/call","params":{"name":"tui_exit_status","arguments":{}}}),
+                            ])
 r23 = JSON.parse(responses[1], symbolize_names: true)
 running_text = r23.dig(:result, :content, 0, :text) || ""
 tc = 0
-tc += 1 if assert("exit_status shows running or status", running_text.include?("running") || running_text.include?("status"))
+tc += 1 if assert("exit_status shows running or status",
+                  running_text.include?("running") || running_text.include?("status"),)
 passed += tc
 tests += 1
 
 # -- Test 24: tui_find_text ----------------------------------------
 puts "\nTest 24: tui_find_text"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":39,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello world"}}}),
-  %({"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"tui_find_text","arguments":{"pattern":"hello"}}})
-])
+                              %({"jsonrpc":"2.0","id":39,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello world"}}}),
+                              %({"jsonrpc":"2.0","id":40,"method":"tools/call","params":{"name":"tui_find_text","arguments":{"pattern":"hello"}}}),
+                            ])
 r24 = JSON.parse(responses[1], symbolize_names: true)
 find_text = r24.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -382,9 +388,9 @@ tests += 2
 # -- Test 25: tui_find_text no match -------------------------------
 puts "\nTest 25: tui_find_text (no match)"
 responses = simulate_server([
-  %({"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
-  %({"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"tui_find_text","arguments":{"pattern":"nonexistent"}}})
-])
+                              %({"jsonrpc":"2.0","id":41,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":42,"method":"tools/call","params":{"name":"tui_find_text","arguments":{"pattern":"nonexistent"}}}),
+                            ])
 r25 = JSON.parse(responses[1], symbolize_names: true)
 no_match = r25.dig(:result, :content, 0, :text) || ""
 tc = 0
@@ -402,3 +408,5 @@ if passed < tests
 else
   puts "All tests passed!"
 end
+
+# rubocop:enable Layout/LineLength

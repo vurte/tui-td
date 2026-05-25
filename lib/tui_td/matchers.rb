@@ -19,8 +19,8 @@ module TUITD
       end
 
       description { "have text #{expected.inspect}" }
-      failure_message { |state| "expected terminal to contain #{expected.inspect}" }
-      failure_message_when_negated { |state| "expected terminal NOT to contain #{expected.inspect}" }
+      failure_message { |_state| "expected terminal to contain #{expected.inspect}" }
+      failure_message_when_negated { |_state| "expected terminal NOT to contain #{expected.inspect}" }
     end
 
     RSpec::Matchers.define :have_regex do |pattern|
@@ -30,12 +30,15 @@ module TUITD
       end
 
       description { "match regex #{pattern.inspect}" }
-      failure_message { |state| "expected terminal to match #{pattern.inspect}" }
-      failure_message_when_negated { |state| "expected terminal NOT to match #{pattern.inspect}" }
+      failure_message { |_state| "expected terminal to match #{pattern.inspect}" }
+      failure_message_when_negated { |_state| "expected terminal NOT to match #{pattern.inspect}" }
     end
 
     RSpec::Matchers.define :have_fg do |expected|
-      chain(:at) { |row, col| @row, @col = row, col }
+      chain(:at) do |row, col|
+        @row = row
+        @col = col
+      end
 
       match do |state|
         @actual = state.foreground_at(@row, @col)
@@ -43,13 +46,16 @@ module TUITD
       end
 
       description { "have foreground #{expected.inspect} at [#{@row},#{@col}]" }
-      failure_message do |state|
+      failure_message do |_state|
         "expected FG at [#{@row},#{@col}] to be #{expected.inspect}, but was #{@actual.inspect}"
       end
     end
 
     RSpec::Matchers.define :have_bg do |expected|
-      chain(:at) { |row, col| @row, @col = row, col }
+      chain(:at) do |row, col|
+        @row = row
+        @col = col
+      end
 
       match do |state|
         @actual = state.background_at(@row, @col)
@@ -57,13 +63,16 @@ module TUITD
       end
 
       description { "have background #{expected.inspect} at [#{@row},#{@col}]" }
-      failure_message do |state|
+      failure_message do |_state|
         "expected BG at [#{@row},#{@col}] to be #{expected.inspect}, but was #{@actual.inspect}"
       end
     end
 
     RSpec::Matchers.define :have_style do
-      chain(:at) { |row, col| @row, @col = row, col }
+      chain(:at) do |row, col|
+        @row = row
+        @col = col
+      end
       chain(:with) { |expected| @expected = expected }
 
       match do |state|
@@ -75,7 +84,7 @@ module TUITD
       description do
         "have style #{@expected.inspect} at [#{@row},#{@col}]"
       end
-      failure_message do |state|
+      failure_message do |_state|
         "expected style at [#{@row},#{@col}] to be #{@expected.inspect}, but was #{@actual.inspect}"
       end
     end
@@ -88,10 +97,10 @@ module TUITD
       end
 
       description { "have exit status #{expected}" }
-      failure_message do |driver|
+      failure_message do |_driver|
         "expected exit status #{expected}, but was #{@actual}"
       end
-      failure_message_when_negated do |driver|
+      failure_message_when_negated do |_driver|
         "expected exit status not to be #{expected}"
       end
     end

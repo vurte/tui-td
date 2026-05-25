@@ -12,14 +12,15 @@ module TUITD
   #
   # Output: {rows: [[{char, fg, bg, bold, italic, underline}]], cursor: {row, col}, size: {rows, cols}}
   #
+  # rubocop:disable Metrics/ModuleLength
   module ANSIParser
     SGR_COLORS = {
-      0  => :reset,
-      1  => :bold,
-      3  => :italic,
-      4  => :underline,
-      5  => :blink,
-      7  => :reverse,
+      0 => :reset,
+      1 => :bold,
+      3 => :italic,
+      4 => :underline,
+      5 => :blink,
+      7 => :reverse,
       22 => :normal,
       23 => :no_italic,
       24 => :no_underline,
@@ -62,16 +63,16 @@ module TUITD
     }.freeze
 
     SGR_16_TO_NAME = {
-      0  => "black",
-      1  => "red",
-      2  => "green",
-      3  => "yellow",
-      4  => "blue",
-      5  => "magenta",
-      6  => "cyan",
-      7  => "white",
-      8  => "bright_black",
-      9  => "bright_red",
+      0 => "black",
+      1 => "red",
+      2 => "green",
+      3 => "yellow",
+      4 => "blue",
+      5 => "magenta",
+      6 => "cyan",
+      7 => "white",
+      8 => "bright_black",
+      9 => "bright_red",
       10 => "bright_green",
       11 => "bright_yellow",
       12 => "bright_blue",
@@ -81,40 +82,41 @@ module TUITD
     }.freeze
 
     DEC_MAP = {
-      '`' => '◆',
-      'a' => '▒',
-      'b' => "\u2409",
-      'c' => "\u240C",
-      'd' => "\u240D",
-      'e' => "\u240A",
-      'f' => '°',
-      'g' => '±',
-      'h' => "\u2424",
-      'i' => "\u240B",
-      'j' => '┘',
-      'k' => '┐',
-      'l' => '┌',
-      'm' => '└',
-      'n' => '┼',
-      'o' => '⎺',
-      'p' => '⎻',
-      'q' => '─',
-      'r' => '⎼',
-      's' => '⎽',
-      't' => '├',
-      'u' => '┤',
-      'v' => '┴',
-      'w' => '┬',
-      'x' => '│',
-      'y' => '≤',
-      'z' => '≥',
-      '{' => 'π',
-      '|' => '≠',
-      '}' => '£',
-      '~' => '·'
+      "`" => "◆",
+      "a" => "▒",
+      "b" => "\u2409",
+      "c" => "\u240C",
+      "d" => "\u240D",
+      "e" => "\u240A",
+      "f" => "°",
+      "g" => "±",
+      "h" => "\u2424",
+      "i" => "\u240B",
+      "j" => "┘",
+      "k" => "┐",
+      "l" => "┌",
+      "m" => "└",
+      "n" => "┼",
+      "o" => "⎺",
+      "p" => "⎻",
+      "q" => "─",
+      "r" => "⎼",
+      "s" => "⎽",
+      "t" => "├",
+      "u" => "┤",
+      "v" => "┴",
+      "w" => "┬",
+      "x" => "│",
+      "y" => "≤",
+      "z" => "≥",
+      "{" => "π",
+      "|" => "≠",
+      "}" => "£",
+      "~" => "·",
     }.freeze
 
     # Parse raw terminal output into a structured state Hash
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/BlockNesting
     def self.parse(raw, rows = 40, cols = 120)
       grid = Array.new(rows) do
         Array.new(cols) { default_cell.dup }
@@ -156,7 +158,7 @@ module TUITD
         if processed[i] == "\e" && processed[i + 1] == "["
           # Find end of CSI sequence
           j = i + 2
-          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@\`fhlmnRrsuq]/)
+          j += 1 while j < processed.length && !processed[j].match?(/[A-HJ-KP-SX@`fhlmnRrsuq]/)
           seq = processed[i..j]
 
           dsr, new_saved, action = _apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
@@ -211,27 +213,19 @@ module TUITD
             end
           end
 
-          if action.key?(:cursor_visible)
-            cursor_visible = action[:cursor_visible]
-          end
+          cursor_visible = action[:cursor_visible] if action.key?(:cursor_visible)
 
-          if action.key?(:cursor_style)
-            cursor_style = action[:cursor_style]
-          end
+          cursor_style = action[:cursor_style] if action.key?(:cursor_style)
 
-          if action.key?(:mouse_mode)
-            mouse_mode = action[:mouse_mode]
-          end
+          mouse_mode = action[:mouse_mode] if action.key?(:mouse_mode)
 
-          if action.key?(:mouse_format)
-            mouse_format = action[:mouse_format]
-          end
+          mouse_format = action[:mouse_format] if action.key?(:mouse_format)
 
           i = j + 1
-        elsif processed[i] == "\n" || processed[i] == "\r\n"
+        elsif ["\n", "\r\n"].include?(processed[i])
           cursor[:row] += 1
           cursor[:col] = 0
-          i += processed[i..i + 1] == "\r\n" ? 2 : 1
+          i += processed[i..(i + 1)] == "\r\n" ? 2 : 1
         elsif processed[i] == "\r"
           cursor[:col] = 0
           i += 1
@@ -240,7 +234,7 @@ module TUITD
           cursor[:col] = cols - 1 if cursor[:col] >= cols
           i += 1
         elsif processed[i] == "\b"
-          cursor[:col] -= 1 if cursor[:col] > 0
+          cursor[:col] -= 1 if cursor[:col].positive?
           i += 1
         elsif processed[i] == "\a"
           # Bell — ignore
@@ -270,13 +264,13 @@ module TUITD
               cursor[:col] = saved_cursor[:col]
             end
             i += 2
-          elsif processed[i + 1] == "(" && (processed[i + 2] == "0" || processed[i + 2] == "B")
+          elsif processed[i + 1] == "(" && %w[0 B].include?(processed[i + 2])
             g0_charset = (processed[i + 2] == "0" ? :dec : :ascii)
             i += 3
-          elsif processed[i + 1] == ")" && (processed[i + 2] == "0" || processed[i + 2] == "B")
+          elsif processed[i + 1] == ")" && %w[0 B].include?(processed[i + 2])
             g1_charset = (processed[i + 2] == "0" ? :dec : :ascii)
             i += 3
-          elsif processed[i + 1] && processed[i + 1].match?(/[()*+\-.\/]/)
+          elsif processed[i + 1]&.match?(%r{[()*+\-./]})
             # Other ISO 2022 charset sequences (e.g. G2/G3 or other charsets)
             i += 3
           else
@@ -288,16 +282,14 @@ module TUITD
             cell = grid[cursor[:row]][cursor[:col]]
             current_charset = (active_charset == :g1 ? g1_charset : g0_charset)
             mapped_char = char
-            if current_charset == :dec && DEC_MAP.key?(char)
-              mapped_char = DEC_MAP[char]
-            end
+            mapped_char = DEC_MAP[char] if current_charset == :dec && DEC_MAP.key?(char)
             cell[:char] = mapped_char
             cell.merge!(attrs)
             cursor[:col] += 1
             cursor[:col] = cols - 1 if cursor[:col] >= cols
           end
           i += char_len
-        else
+        else # rubocop:disable Lint/DuplicateBranch
           i += 1
         end
 
@@ -305,19 +297,19 @@ module TUITD
         region_top = scroll_region[:top]
         region_bottom = scroll_region[:bottom]
 
-        if cursor[:row] > region_bottom
-          scroll_lines = [cursor[:row] - region_bottom, rows].min
-          # Shift lines within the scroll region up
-          (region_top..(region_bottom - scroll_lines)).each do |ri|
-            src = ri + scroll_lines
-            grid[ri] = src <= region_bottom ? grid[src] : Array.new(cols) { default_cell.dup }
-          end
-          # Fill bottom of scroll region with blank lines
-          ((region_bottom - scroll_lines + 1)..region_bottom).each do |ri|
-            grid[ri] = Array.new(cols) { default_cell.dup }
-          end
-          cursor[:row] = region_bottom
+        next unless cursor[:row] > region_bottom
+
+        scroll_lines = [cursor[:row] - region_bottom, rows].min
+        # Shift lines within the scroll region up
+        (region_top..(region_bottom - scroll_lines)).each do |ri|
+          src = ri + scroll_lines
+          grid[ri] = src <= region_bottom ? grid[src] : Array.new(cols) { default_cell.dup }
         end
+        # Fill bottom of scroll region with blank lines
+        ((region_bottom - scroll_lines + 1)..region_bottom).each do |ri|
+          grid[ri] = Array.new(cols) { default_cell.dup }
+        end
+        cursor[:row] = region_bottom
       end
 
       {
@@ -326,21 +318,23 @@ module TUITD
           row: cursor[:row],
           col: cursor[:col],
           visible: cursor_visible,
-          style: cursor_style
+          style: cursor_style,
         },
         rows: grid,
         pending_dsr: pending_dsr,
         cursor_visible: cursor_visible,
         cursor_style: cursor_style,
         mouse_mode: mouse_mode,
-        mouse_format: mouse_format
+        mouse_format: mouse_format,
       }
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/BlockNesting
 
     # Rebuild ANSI output from a state hash (for rendering/screenshot)
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def self.build_frame(state)
       rows = state.dig(:size, :rows) || state["size"]["rows"]
-      cols = state.dig(:size, :cols) || state["size"]["cols"]
+      state.dig(:size, :cols) || state["size"]["cols"]
       grid = state[:rows] || state["rows"]
       cursor = state[:cursor] || state["cursor"]
       mouse_mode = state[:mouse_mode] || state["mouse_mode"] || :none
@@ -351,7 +345,7 @@ module TUITD
       out << "\e[2J\e[H"
 
       grid.each_with_index do |row, ri|
-        row.each_with_index do |cell, ci|
+        row.each_with_index do |cell, _ci|
           char = cell[:char] || cell["char"] || " "
           fg = cell[:fg] || cell["fg"] || "default"
           bg = cell[:bg] || cell["bg"] || "default"
@@ -380,9 +374,7 @@ module TUITD
 
       # Reconstruct cursor visibility
       cursor_vis = true
-      if cursor.is_a?(Hash)
-        cursor_vis = cursor[:visible] != false && cursor["visible"] != false
-      end
+      cursor_vis = cursor[:visible] != false && cursor["visible"] != false if cursor.is_a?(Hash)
       out << (cursor_vis ? "\e[?25h" : "\e[?25l")
 
       # Reconstruct cursor style
@@ -392,30 +384,33 @@ module TUITD
       end
 
       # Reconstruct mouse mode and format
-      if mouse_mode == :normal
-        out << "\e[?1000h"
-      elsif mouse_mode == :drag
-        out << "\e[?1002h"
-      elsif mouse_mode == :all
-        out << "\e[?1003h"
-      else
-        out << "\e[?1000l\e[?1002l\e[?1003l"
-      end
+      out << case mouse_mode
+             when :normal
+               "\e[?1000h"
+             when :drag
+               "\e[?1002h"
+             when :all
+               "\e[?1003h"
+             else
+               "\e[?1000l\e[?1002l\e[?1003l"
+             end
 
-      if mouse_format == :sgr
-        out << "\e[?1006h"
-      else
-        out << "\e[?1006l"
-      end
+      out << if mouse_format == :sgr
+               "\e[?1006h"
+             else
+               "\e[?1006l"
+             end
 
       out << "\e[0m"
       out
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ParameterLists
     def self._apply_csi(seq, cursor, attrs, grid, rows, cols, saved_cursor, scroll_region)
       # Strip leading escape char if present
       cleaned = seq.sub(/^\e/, "")
-      match = cleaned.match(/^\[(\??)([\d;]*)( ?)([A-HJ-KP-SX@\`fhlmnRrsuq])$/)
+      match = cleaned.match(/^\[(\??)([\d;]*)( ?)([A-HJ-KP-SX@`fhlmnRrsuq])$/)
       return [false, nil, {}] unless match
 
       is_private = (match[1] == "?")
@@ -431,19 +426,19 @@ module TUITD
         _apply_sgr(params, attrs)
       when "A" # CUU — Cursor Up
         n = params[0] || 1
-        n = 1 if n == 0
+        n = 1 if n.zero?
         cursor[:row] = [cursor[:row] - n, 0].max
       when "B" # CUD — Cursor Down
         n = params[0] || 1
-        n = 1 if n == 0
+        n = 1 if n.zero?
         cursor[:row] = [cursor[:row] + n, rows - 1].min
       when "C" # CUF — Cursor Forward
         n = params[0] || 1
-        n = 1 if n == 0
+        n = 1 if n.zero?
         cursor[:col] = [cursor[:col] + n, cols - 1].min
       when "D" # CUB — Cursor Back
         n = params[0] || 1
-        n = 1 if n == 0
+        n = 1 if n.zero?
         cursor[:col] = [cursor[:col] - n, 0].max
       when "H", "f" # CUP — Cursor Position
         r = (params[0] || 1) - 1
@@ -474,6 +469,7 @@ module TUITD
         n = params[0] || 1
         n.times do |i|
           next unless cursor[:row] < rows && cursor[:col] + i < cols
+
           grid[cursor[:row]][cursor[:col] + i][:char] = " "
         end
       when "s" # DECSC — Save Cursor (CSI variant)
@@ -546,9 +542,14 @@ module TUITD
 
       [false, new_saved, action]
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity, Metrics/ParameterLists
 
+    # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
     def self._apply_sgr(params, attrs)
-      return attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false) if params.empty? || params == [0]
+      if params.empty? || params == [0]
+        return attrs.merge!(fg: "default", bg: "default", bold: false, italic: false, underline: false,
+                            blink: false,)
+      end
 
       i = 0
       while i < params.length
@@ -572,10 +573,8 @@ module TUITD
           attrs[:underline] = false
         when 25
           attrs[:blink] = false
-        when 7
+        when 7, 27
           # Reverse — swap fg and bg
-          attrs[:fg], attrs[:bg] = attrs[:bg], attrs[:fg]
-        when 27
           attrs[:fg], attrs[:bg] = attrs[:bg], attrs[:fg]
         when 30..37
           attrs[:fg] = SGR_16_TO_NAME[p - 30] || "color#{p - 30}"
@@ -586,8 +585,10 @@ module TUITD
             attrs[:fg] = "color#{color}"
             i += 2
           elsif params[i + 1] == 2
-            r, g, b = params[i + 2], params[i + 3], params[i + 4]
-            attrs[:fg] = format("#%02x%02x%02x", r, g, b)
+            r = params[i + 2]
+            g = params[i + 3]
+            b = params[i + 4]
+            attrs[:fg] = format("#%<r>02x%<g>02x%<b>02x", r: r, g: g, b: b)
             i += 4
           end
         when 39
@@ -601,8 +602,10 @@ module TUITD
             attrs[:bg] = "color#{color}"
             i += 2
           elsif params[i + 1] == 2
-            r, g, b = params[i + 2], params[i + 3], params[i + 4]
-            attrs[:bg] = format("#%02x%02x%02x", r, g, b)
+            r = params[i + 2]
+            g = params[i + 3]
+            b = params[i + 4]
+            attrs[:bg] = format("#%<r>02x%<g>02x%<b>02x", r: r, g: g, b: b)
             i += 4
           end
         when 49
@@ -615,6 +618,7 @@ module TUITD
         i += 1
       end
     end
+    # rubocop:enable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/MethodLength, Metrics/PerceivedComplexity
 
     def self._erase_down(cursor, grid, rows, cols)
       r = cursor[:row]
@@ -654,7 +658,7 @@ module TUITD
       (c...cols).each { |ci| grid[r][ci][:char] = " " if r < grid.length }
     end
 
-    def self._erase_line_left(cursor, grid, cols)
+    def self._erase_line_left(cursor, grid, _cols)
       r = cursor[:row]
       c = cursor[:col]
       (0..c).each { |ci| grid[r][ci][:char] = " " if r < grid.length }
@@ -665,23 +669,23 @@ module TUITD
       cols.times { |ci| grid[r][ci][:char] = " " if r < grid.length }
     end
 
+    # rubocop:disable Metrics/CyclomaticComplexity
     def self._color_code(name, prefix)
       case name
       when "default" then nil
       when /^#([0-9a-fA-F]{6})$/
-        r = $1[0..1].to_i(16)
-        g = $1[2..3].to_i(16)
-        b = $1[4..5].to_i(16)
+        r = ::Regexp.last_match(1)[0..1].to_i(16)
+        g = ::Regexp.last_match(1)[2..3].to_i(16)
+        b = ::Regexp.last_match(1)[4..5].to_i(16)
         "#{prefix};2;#{r};#{g};#{b}"
       when /^(bright_)?(.+)$/
-        base_name = $2
+        base_name = ::Regexp.last_match(2)
         index = SGR_16_TO_NAME.key(base_name)
-        index += 8 if $1 && index && index < 8
+        index += 8 if ::Regexp.last_match(1) && index && index < 8
         index ? "#{prefix};5;#{index}" : nil
-      else
-        nil
       end
     end
+    # rubocop:enable Metrics/CyclomaticComplexity
 
     def self.default_cell
       { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false, blink: false }
@@ -689,26 +693,28 @@ module TUITD
 
     # Extract a single UTF-8 character at position i in a binary string.
     # Returns [char_string, byte_length] or nil if the byte is not printable/valid.
+    # rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Naming/MethodParameterName
     def self._utf8_char_at(str, i)
       byte = str.getbyte(i)
       return nil unless byte
 
       if byte < 0x80
         # Single-byte ASCII
-        return nil unless byte >= 0x20  # only printable, skip control chars
+        return nil unless byte >= 0x20 # only printable, skip control chars
+
         return [byte.chr, 1]
       end
 
       # Multi-byte UTF-8
       len = if byte & 0xE0 == 0xC0
               2
-      elsif byte & 0xF0 == 0xE0
+            elsif byte & 0xF0 == 0xE0
               3
-      elsif byte & 0xF8 == 0xF0
+            elsif byte & 0xF8 == 0xF0
               4
-      else
-              return nil  # continuation byte or invalid — let main loop advance
-      end
+            else
+              return nil # continuation byte or invalid — let main loop advance
+            end
       return nil if i + len > str.bytesize
 
       bytes = str.byteslice(i, len)
@@ -719,5 +725,7 @@ module TUITD
     rescue StandardError
       nil
     end
+    # rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Naming/MethodParameterName
   end
+  # rubocop:enable Metrics/ModuleLength
 end

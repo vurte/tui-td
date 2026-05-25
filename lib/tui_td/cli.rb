@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+
 require "optparse"
 
 module TUITD
@@ -11,7 +13,7 @@ module TUITD
 
     def run(argv)
       global_opts = {}
-      command = nil
+      nil
       command_opts = {}
 
       OptionParser.new do |opts|
@@ -131,7 +133,7 @@ module TUITD
       server = MCP::Server.new(
         rows: globals[:rows] || 40,
         cols: globals[:cols] || 120,
-        timeout: globals[:timeout] || 30
+        timeout: globals[:timeout] || 30,
       )
       server.start
     end
@@ -148,7 +150,7 @@ module TUITD
 
       driver.wait_for_stable
 
-      if globals[:format] == :json || globals[:format] == :pretty_json
+      if %i[json pretty_json].include?(globals[:format])
         puts driver.state_json(pretty: globals[:format] == :pretty_json)
       else
         _render_text(driver.state_data)
@@ -182,6 +184,7 @@ module TUITD
           print "> "
           input = $stdin.gets
           break unless input
+
           input = input.chomp
           break if input == "exit"
 
@@ -195,7 +198,7 @@ module TUITD
           elsif input.start_with?("key ")
             driver.send_keys(input.split(" ", 2).last.to_sym)
           else
-            driver.send(input + "\n")
+            driver.send("#{input}\n")
           end
         end
       rescue Interrupt
@@ -258,16 +261,14 @@ module TUITD
 
       on_step = if verbose || live || step_mode
                   lambda do |info|
-                    if live && info[:driver]
-                      info[:driver].wait_for_stable(stable_ms: 200)
-                    end
+                    info[:driver].wait_for_stable(stable_ms: 200) if live && info[:driver]
                     if verbose
                       status = info[:result].passed ? "PASS" : "FAIL"
                       puts "[#{info[:index] + 1}/#{info[:total]}] #{info[:action]}: #{info[:result].message}"
                       puts "      → #{status}"
                     end
                     if live && info[:driver]
-                      print "\e[2J\e[H"  # clear screen, home cursor
+                      print "\e[2J\e[H" # clear screen, home cursor
                       _render_text(info[:driver].state_data)
                     end
                     if step_mode
@@ -285,7 +286,7 @@ module TUITD
 
       puts
       puts "Test: #{result[:name]}"
-      puts "Status: #{result[:passed] ? 'PASSED' : 'FAILED'}"
+      puts "Status: #{result[:passed] ? "PASSED" : "FAILED"}"
       puts "-" * 40
 
       result[:results].each do |r|
@@ -312,7 +313,7 @@ module TUITD
     end
 
     def _help_main
-      puts OptionParser.new { |o| o.banner = "Usage: tui-td <command> [options]" }
+      puts(OptionParser.new { |o| o.banner = "Usage: tui-td <command> [options]" })
       puts
       puts "For more: tui-td help test   (JSON test step types)"
       puts "          tui-td help rspec  (RSpec matchers)"
@@ -480,3 +481,4 @@ module TUITD
     end
   end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength

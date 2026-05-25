@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
+
 require_relative "ansi_utils"
 
 module TUITD
@@ -121,14 +123,14 @@ module TUITD
     def render_body
       lines = @grid.map.with_index do |row, ri|
         line_html = if row.nil? || row.empty?
-          '<span class="line"></span>'
-        else
-          runs = build_runs(row, ri)
-          spans = runs.map do |run|
-            render_run(run)
-          end
-          %(<span class="line">#{spans.join}</span>)
-        end
+                      '<span class="line"></span>'
+                    else
+                      runs = build_runs(row, ri)
+                      spans = runs.map do |run|
+                        render_run(run)
+                      end
+                      %(<span class="line">#{spans.join}</span>)
+                    end
         line_html
       end
 
@@ -140,7 +142,7 @@ module TUITD
       current_run = nil
 
       row.each_with_index do |cell, ci|
-        char = (cell[:char] || cell["char"] || " ")
+        char = cell[:char] || cell["char"] || " "
         fg = cell[:fg] || cell["fg"] || "default"
         bg = cell[:bg] || cell["bg"] || "default"
         bold = cell[:bold] || cell["bold"] || false
@@ -149,7 +151,7 @@ module TUITD
         blink = cell[:blink] || cell["blink"] || false
 
         style_key = [fg, bg, bold, italic, underline, blink]
-        is_cur = is_cursor?(ri, ci)
+        is_cur = cursor_at?(ri, ci)
 
         if current_run && current_run[:key] == style_key && !current_run[:has_cursor] && !is_cur
           current_run[:chars] << char
@@ -159,7 +161,7 @@ module TUITD
             chars: [char],
             style: cell_style(fg, bg, bold, italic, underline),
             has_cursor: is_cur,
-            blink: blink
+            blink: blink,
           }
           runs << current_run
         end
@@ -186,9 +188,7 @@ module TUITD
       if run[:has_cursor]
         classes << "cursor-cell"
         cursor_vis = @cursor[:visible] != false && @cursor["visible"] != false
-        if !cursor_vis
-          classes << "cursor-hidden"
-        else
+        if cursor_vis
           style_val = @cursor[:style] || @cursor["style"]
           case style_val
           when 0, 1
@@ -204,6 +204,8 @@ module TUITD
           when 6
             classes << "cursor-bar"
           end
+        else
+          classes << "cursor-hidden"
         end
       end
       classes << "term-blink" if run[:blink]
@@ -213,12 +215,12 @@ module TUITD
       %(<span#{cls}#{style}>#{chars}</span>)
     end
 
-    def is_cursor?(ri, ci)
+    def cursor_at?(ri, ci)
       (@cursor[:row] || @cursor["row"]) == ri && (@cursor[:col] || @cursor["col"]) == ci
     end
 
     def css_color(rgb)
-      format("#%02x%02x%02x", *rgb)
+      format("#%<r>02x%<g>02x%<b>02x", r: rgb[0], g: rgb[1], b: rgb[2])
     end
 
     def escape_html(char)
@@ -230,6 +232,6 @@ module TUITD
       else char
       end
     end
-
   end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity

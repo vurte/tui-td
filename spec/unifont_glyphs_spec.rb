@@ -37,14 +37,14 @@ RSpec.describe TUITD::UnifontGlyphs do
 
     it "returns visible pixels for common glyphs" do
       glyphs = {
-        "Greek alpha"   => 0x03B1, # α
-        "Cyrillic De"   => 0x0414, # Д
-        "Euro sign"     => 0x20AC, # €
-        "Right arrow"   => 0x2192, # →
-        "Sum sign"      => 0x2211, # ∑
-        "Box horizontal"=> 0x2500, # ─
-        "Music note"    => 0x266A, # ♪
-        "Turkish g"     => 0x011F, # ğ
+        "Greek alpha" => 0x03B1, # α
+        "Cyrillic De" => 0x0414, # Д
+        "Euro sign" => 0x20AC, # €
+        "Right arrow" => 0x2192, # →
+        "Sum sign" => 0x2211, # ∑
+        "Box horizontal" => 0x2500, # ─
+        "Music note" => 0x266A, # ♪
+        "Turkish g" => 0x011F, # ğ
       }
 
       glyphs.each do |name, cp|
@@ -57,19 +57,19 @@ RSpec.describe TUITD::UnifontGlyphs do
 
     it "covers all major scripts" do
       scripts = {
-        Greek:    [0x03B1, 0x03B2, 0x03B3], # α β γ
+        Greek: [0x03B1, 0x03B2, 0x03B3], # α β γ
         Cyrillic: [0x0414, 0x0416, 0x0418], # Д Ж И
-        Arabic:   [0x062D, 0x0628, 0x0627], # ح ب ا
-        Turkish:  [0x011F, 0x015F, 0x0131], # ğ ş ı
-        Math:     [0x2211, 0x222B, 0x221E], # ∑ ∫ ∞
-        Arrows:   [0x2190, 0x2191, 0x2192], # ← ↑ →
-        Box:      [0x2500, 0x2502, 0x250C], # ─ │ ┌
+        Arabic: [0x062D, 0x0628, 0x0627], # ح ب ا
+        Turkish: [0x011F, 0x015F, 0x0131], # ğ ş ı
+        Math: [0x2211, 0x222B, 0x221E], # ∑ ∫ ∞
+        Arrows: [0x2190, 0x2191, 0x2192], # ← ↑ →
+        Box: [0x2500, 0x2502, 0x250C], # ─ │ ┌
       }
 
       scripts.each do |script, codepoints|
         codepoints.each do |cp|
           expect(described_class.rows(cp)).not_to be_nil,
-            "Expected #{script} U+#{cp.to_s(16).upcase} to be covered"
+                                                  "Expected #{script} U+#{cp.to_s(16).upcase} to be covered"
         end
       end
     end

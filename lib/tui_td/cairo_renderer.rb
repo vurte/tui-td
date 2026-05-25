@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists
+
 module TUITD
   module CairoRenderer
     CELL_W = 8
@@ -76,9 +78,9 @@ module TUITD
           CELL_W.times do |dx|
             sum = 0
             scale.times do |sy|
-              row_off = (dy * scale + sy) * stride
+              row_off = ((dy * scale) + sy) * stride
               scale.times do |sx|
-                sum += data.getbyte(row_off + (dx * scale + sx) * 4 + 3)
+                sum += data.getbyte(row_off + (((dx * scale) + sx) * 4) + 3)
               end
             end
             alpha_grid[dy][dx] = sum / scale_sq
@@ -107,3 +109,4 @@ module TUITD
     end
   end
 end
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/ParameterLists

@@ -79,7 +79,7 @@ RSpec.describe TUITD::ANSIParser do
 
     it "scrolls efficiently with many newlines" do
       # 100 newlines in a 10-row terminal — should not error
-      input = "first\n" + ("\n" * 100) + "last"
+      input = "first\n#{"\n" * 100}last"
       state = described_class.parse(input, 10, 40)
       expect(state[:rows].length).to eq(10)
       line = state[:rows][9].map { |c| c[:char] }.join
@@ -354,7 +354,8 @@ RSpec.describe TUITD::ANSIParser do
         "size" => { "rows" => 2, "cols" => 5 },
         "cursor" => { "row" => 0, "col" => 0 },
         "rows" => [
-          [{ "char" => "S", "fg" => "green", "bg" => "default", "bold" => false, "italic" => false, "underline" => false }],
+          [{ "char" => "S", "fg" => "green", "bg" => "default", "bold" => false, "italic" => false,
+             "underline" => false, }],
           [],
         ],
       }
@@ -456,7 +457,7 @@ RSpec.describe TUITD::ANSIParser do
         rows: Array.new(2) { Array.new(5) { described_class.default_cell.dup } },
         cursor: { row: 0, col: 0, visible: false, style: 2 },
         mouse_mode: :all,
-        mouse_format: :sgr
+        mouse_format: :sgr,
       }
       frame = described_class.build_frame(state_data)
       expect(frame).to include("\e[?25l")

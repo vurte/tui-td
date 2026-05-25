@@ -84,7 +84,11 @@ RSpec.describe TUITD::Driver do
       sleep 0.2
       expect(driver.raw_output).to include("hello")
     ensure
-      driver.close rescue nil
+      begin
+        driver.close
+      rescue StandardError
+        nil
+      end
     end
 
     it "raises Error if driver not started" do
@@ -105,7 +109,9 @@ RSpec.describe TUITD::Driver do
     end
 
     after do
-      cat_driver&.close rescue nil
+      cat_driver&.close
+    rescue StandardError
+      nil
     end
 
     it "sends enter key" do
@@ -229,7 +235,7 @@ RSpec.describe TUITD::Driver do
       expect(driver.exitstatus).to eq(42)
     rescue PTY::ChildExited
       # On some systems, the PTY raises when the child exits with non-zero
-      driver.close if driver
+      driver&.close
     end
   end
 

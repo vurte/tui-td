@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Layout/LineLength
+
 require "json"
 
 module TUITD
@@ -35,7 +37,7 @@ module TUITD
         $stderr.sync = true
 
         # Signal readiness
-        $stderr.puts "[tui-td MCP] Server started, awaiting JSON-RPC on stdin..."
+        warn "[tui-td MCP] Server started, awaiting JSON-RPC on stdin..."
 
         while @running && (line = $stdin.gets)
           line = line.strip
@@ -48,10 +50,10 @@ module TUITD
             puts JSON.generate(response) if response
             $stdout.flush
           rescue JSON::ParserError => e
-            error_response(nil, -32700, "Parse error: #{e.message}")
+            error_response(nil, -32_700, "Parse error: #{e.message}")
           rescue StandardError => e
-            $stderr.puts "[tui-td MCP] Error: #{e.class}: #{e.message}"
-            $stderr.puts e.backtrace.first(5).join("\n  ") if $DEBUG
+            warn "[tui-td MCP] Error: #{e.class}: #{e.message}"
+            warn e.backtrace.first(5).join("\n  ") if $DEBUG
           end
         end
 
@@ -69,35 +71,35 @@ module TUITD
         when "initialize"
           handle_initialize(params, id)
         when "notifications/initialized"
-          nil  # No response needed
+          nil # No response needed
         when "tools/list"
           handle_tools_list(id)
         when "tools/call"
           handle_tools_call(params, id)
         else
           if method&.start_with?("notifications/")
-            nil  # Ignore unknown notifications
+            nil # Ignore unknown notifications
           else
-            error_response(id, -32601, "Method not found: #{method}")
+            error_response(id, -32_601, "Method not found: #{method}")
           end
         end
       end
 
       # Initialize handshake
-      def handle_initialize(params, id)
+      def handle_initialize(_params, id)
         {
           jsonrpc: "2.0",
           id: id,
           result: {
             protocolVersion: PROTOCOL_VERSION,
             capabilities: {
-              tools: {}
+              tools: {},
             },
             serverInfo: {
               name: SERVER_NAME,
-              version: SERVER_VERSION
-            }
-          }
+              version: SERVER_VERSION,
+            },
+          },
         }
       end
 
@@ -116,26 +118,26 @@ module TUITD
                   properties: {
                     command: {
                       type: "string",
-                      description: "The command to run (e.g., 'htop', 'vim file.txt')"
+                      description: "The command to run (e.g., 'htop', 'vim file.txt')",
                     },
                     rows: {
                       type: "integer",
                       description: "Terminal height in rows (default: 40)",
-                      default: 40
+                      default: 40,
                     },
                     cols: {
                       type: "integer",
                       description: "Terminal width in columns (default: 120)",
-                      default: 120
+                      default: 120,
                     },
                     timeout: {
                       type: "integer",
                       description: "Timeout in seconds for waits (default: 30)",
-                      default: 30
-                    }
+                      default: 30,
+                    },
                   },
-                  required: ["command"]
-                }
+                  required: ["command"],
+                },
               },
               {
                 name: "tui_send",
@@ -145,11 +147,11 @@ module TUITD
                   properties: {
                     text: {
                       type: "string",
-                      description: "Text to send to the TUI. Use \\n for enter/newline."
-                    }
+                      description: "Text to send to the TUI. Use \\n for enter/newline.",
+                    },
                   },
-                  required: ["text"]
-                }
+                  required: ["text"],
+                },
               },
               {
                 name: "tui_send_key",
@@ -159,14 +161,14 @@ module TUITD
                   properties: {
                     key: {
                       type: "string",
-                      enum: ["enter", "tab", "escape", "up", "down", "left", "right",
-                             "backspace", "ctrl_c", "ctrl_d", "ctrl_z", "page_up", "page_down",
-                             "home", "end", "delete"],
-                      description: "Key to press"
-                    }
+                      enum: %w[enter tab escape up down left right
+                               backspace ctrl_c ctrl_d ctrl_z page_up page_down
+                               home end delete],
+                      description: "Key to press",
+                    },
                   },
-                  required: ["key"]
-                }
+                  required: ["key"],
+                },
               },
               {
                 name: "tui_wait_for_text",
@@ -176,16 +178,16 @@ module TUITD
                   properties: {
                     text: {
                       type: "string",
-                      description: "Text to wait for in the terminal output"
+                      description: "Text to wait for in the terminal output",
                     },
                     timeout: {
                       type: "integer",
                       description: "Custom timeout in seconds (overrides default)",
-                      default: 30
-                    }
+                      default: 30,
+                    },
                   },
-                  required: ["text"]
-                }
+                  required: ["text"],
+                },
               },
               {
                 name: "tui_wait_for_stable",
@@ -196,10 +198,10 @@ module TUITD
                     timeout: {
                       type: "integer",
                       description: "Custom timeout in seconds",
-                      default: 30
-                    }
-                  }
-                }
+                      default: 30,
+                    },
+                  },
+                },
               },
               {
                 name: "tui_state",
@@ -209,20 +211,20 @@ module TUITD
                   properties: {
                     format: {
                       type: "string",
-                      enum: ["ai", "full", "text"],
+                      enum: %w[ai full text],
                       description: "Output format: 'ai' (compact, text+highlights, default), 'full' (complete cell grid with ANSI colors), 'text' (plain text only)",
-                      default: "ai"
-                    }
-                  }
-                }
+                      default: "ai",
+                    },
+                  },
+                },
               },
               {
                 name: "tui_plain_text",
                 description: "Get the current terminal content as plain text (all ANSI stripped).",
                 inputSchema: {
                   type: "object",
-                  properties: {}
-                }
+                  properties: {},
+                },
               },
               {
                 name: "tui_screenshot",
@@ -232,10 +234,10 @@ module TUITD
                   properties: {
                     path: {
                       type: "string",
-                      description: "Output file path (optional, auto-generated if omitted)"
-                    }
-                  }
-                }
+                      description: "Output file path (optional, auto-generated if omitted)",
+                    },
+                  },
+                },
               },
               {
                 name: "tui_html_render",
@@ -245,26 +247,26 @@ module TUITD
                   properties: {
                     path: {
                       type: "string",
-                      description: "Optional file path to save the HTML. If omitted, the HTML content is returned inline so you can view it directly."
-                    }
-                  }
-                }
+                      description: "Optional file path to save the HTML. If omitted, the HTML content is returned inline so you can view it directly.",
+                    },
+                  },
+                },
               },
               {
                 name: "tui_wait_for_exit",
                 description: "Wait until the TUI process exits. Returns the exit status code (0 = success, non-zero = error).",
                 inputSchema: {
                   type: "object",
-                  properties: {}
-                }
+                  properties: {},
+                },
               },
               {
                 name: "tui_exit_status",
                 description: "Get the exit status of the TUI process. Returns nil if still running, otherwise the exit code.",
                 inputSchema: {
                   type: "object",
-                  properties: {}
-                }
+                  properties: {},
+                },
               },
               {
                 name: "tui_find_text",
@@ -274,22 +276,22 @@ module TUITD
                   properties: {
                     pattern: {
                       type: "string",
-                      description: "Text or regex pattern to search for (e.g., 'error', 'ERROR|FAIL')"
-                    }
+                      description: "Text or regex pattern to search for (e.g., 'error', 'ERROR|FAIL')",
+                    },
                   },
-                  required: ["pattern"]
-                }
+                  required: ["pattern"],
+                },
               },
               {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
                   type: "object",
-                  properties: {}
-                }
-              }
-            ]
-          }
+                  properties: {},
+                },
+              },
+            ],
+          },
         }
       end
 
@@ -304,7 +306,7 @@ module TUITD
                  when "tui_send_key"  then call_tui_send_key(args)
                  when "tui_wait_for_text" then call_tui_wait_for_text(args)
                  when "tui_wait_for_stable" then call_tui_wait_for_stable(args)
-                 when "tui_state"     then call_tui_state(args)
+                 when "tui_state" then call_tui_state(args)
                  when "tui_plain_text" then call_tui_plain_text
                  when "tui_screenshot" then call_tui_screenshot(args)
                  when "tui_html_render" then call_tui_html_render(args)
@@ -313,7 +315,7 @@ module TUITD
                  when "tui_find_text" then call_tui_find_text(args)
                  when "tui_close"     then call_tui_close
                  else
-                   return error_response(id, -32602, "Unknown tool: #{tool_name}")
+                   return error_response(id, -32_602, "Unknown tool: #{tool_name}")
                  end
 
         {
@@ -323,10 +325,10 @@ module TUITD
             content: [
               {
                 type: "text",
-                text: result
-              }
-            ]
-          }
+                text: result,
+              },
+            ],
+          },
         }
       rescue TUITD::TimeoutError => e
         {
@@ -336,11 +338,11 @@ module TUITD
             content: [
               {
                 type: "text",
-                text: "TIMEOUT: #{e.message}"
-              }
+                text: "TIMEOUT: #{e.message}",
+              },
             ],
-            isError: false
-          }
+            isError: false,
+          },
         }
       rescue StandardError => e
         {
@@ -350,11 +352,11 @@ module TUITD
             content: [
               {
                 type: "text",
-                text: "ERROR: #{e.class}: #{e.message}"
-              }
+                text: "ERROR: #{e.class}: #{e.message}",
+              },
             ],
-            isError: true
-          }
+            isError: true,
+          },
         }
       end
 
@@ -400,7 +402,7 @@ module TUITD
         state_to_ai_text(state_data)
       end
 
-      def call_tui_wait_for_stable(args)
+      def call_tui_wait_for_stable(_args)
         ensure_driver!
         @driver.wait_for_stable
 
@@ -521,10 +523,11 @@ module TUITD
           id: id,
           error: {
             code: code,
-            message: message
-          }
+            message: message,
+          },
         }
       end
     end
   end
 end
+# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Layout/LineLength
