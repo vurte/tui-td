@@ -369,6 +369,10 @@ tui-td serve
 | `tui_state` | Get terminal state: AI-friendly compact mode (default), `full` grid, or `text` only. |
 | `tui_plain_text` | Get plain text content, ANSI stripped. |
 | `tui_screenshot` | Capture a PNG screenshot of the current terminal. |
+| `tui_html_render` | Render terminal state as a self-contained HTML document. Returns HTML inline or saves to file. |
+| `tui_wait_for_exit` | Wait until the TUI process exits. Returns exit status. |
+| `tui_exit_status` | Get the exit status code (nil if still running). |
+| `tui_find_text` | Search for text or regex in terminal state. Returns positions of all matches. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
@@ -407,7 +411,18 @@ Add to your MCP client configuration:
 // 6. Take screenshot if needed
 {"method": "tools/call", "params": {"name": "tui_screenshot", "arguments": {"path": "/tmp/proof.png"}}}
 
-// 7. Clean up
+// 7. Render as HTML (save to file or get inline)
+{"method": "tools/call", "params": {"name": "tui_html_render", "arguments": {"path": "/tmp/proof.html"}}}
+// Or without path to get HTML inline:
+// {"method": "tools/call", "params": {"name": "tui_html_render", "arguments": {}}}
+
+// 8. Search for text in the terminal
+{"method": "tools/call", "params": {"name": "tui_find_text", "arguments": {"pattern": "error|fail"}}}
+
+// 9. Check exit status (or wait for exit)
+{"method": "tools/call", "params": {"name": "tui_exit_status", "arguments": {}}}
+
+// 10. Clean up
 {"method": "tools/call", "params": {"name": "tui_close", "arguments": {}}}
 ```
 

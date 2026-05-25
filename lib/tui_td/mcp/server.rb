@@ -251,6 +251,36 @@ module TUITD
                 }
               },
               {
+                name: "tui_wait_for_exit",
+                description: "Wait until the TUI process exits. Returns the exit status code (0 = success, non-zero = error).",
+                inputSchema: {
+                  type: "object",
+                  properties: {}
+                }
+              },
+              {
+                name: "tui_exit_status",
+                description: "Get the exit status of the TUI process. Returns nil if still running, otherwise the exit code.",
+                inputSchema: {
+                  type: "object",
+                  properties: {}
+                }
+              },
+              {
+                name: "tui_find_text",
+                description: "Search for text or regex pattern in the current terminal state. Returns positions of all matches with surrounding context.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    pattern: {
+                      type: "string",
+                      description: "Text or regex pattern to search for (e.g., 'error', 'ERROR|FAIL')"
+                    }
+                  },
+                  required: ["pattern"]
+                }
+              },
+              {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
@@ -278,6 +308,9 @@ module TUITD
                  when "tui_plain_text" then call_tui_plain_text
                  when "tui_screenshot" then call_tui_screenshot(args)
                  when "tui_html_render" then call_tui_html_render(args)
+                 when "tui_wait_for_exit" then call_tui_wait_for_exit
+                 when "tui_exit_status" then call_tui_exit_status
+                 when "tui_find_text" then call_tui_find_text(args)
                  when "tui_close"     then call_tui_close
                  else
                    return error_response(id, -32602, "Unknown tool: #{tool_name}")
@@ -413,6 +446,40 @@ module TUITD
           "OK: HTML saved to #{path}"
         else
           renderer.to_html
+        end
+      end
+
+      def call_tui_wait_for_exit
+        ensure_driver!
+        @driver.wait_for_exit
+        status = @driver.exitstatus
+        "OK: Process exited with status #{status}"
+      end
+
+      def call_tui_exit_status
+        ensure_driver!
+        status = @driver.exitstatus
+        if status.nil?
+          "Process is still running"
+        else
+          "Exit status: #{status}"
+        end
+      end
+
+      def call_tui_find_text(args)
+        ensure_driver!
+        pattern = args["pattern"] or return "ERROR: 'pattern' argument is required"
+        state = TUITD::State.new(@driver.state_data)
+        matches = state.find_text(pattern)
+
+        if matches.empty?
+          "No matches found for: #{pattern}"
+        else
+          lines = ["Found #{matches.size} match(es) for: #{pattern}"]
+          matches.each do |m|
+            lines << "  row #{m[:row]}, col #{m[:col]}: #{m[:full_line].strip}"
+          end
+          lines.join("\n")
         end
       end
 
