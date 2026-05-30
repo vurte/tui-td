@@ -1,5 +1,16 @@
 # CHANGELOG
 
+# CHANGELOG
+
+## 0.2.11
+
+- Add RuboCop (rubocop-rake, rubocop-rspec), Reek, and Bundler-Audit linters
+- Pre-commit hook runs all three checks automatically
+- Fix dead code after `raise` in test_runner.rb
+- Rename `is_cursor?` to `cursor_at?` in html_renderer.rb
+- Merge duplicate `describe "#find_text"` blocks in state_spec.rb
+- Fix ANSI parser `FormatStringToken` warnings
+
 ## 0.2.10
 
 - Three new MCP tools: `tui_wait_for_exit` (wait for process to end), `tui_exit_status` (get exit code), `tui_find_text` (search terminal state for text/regex matches)
