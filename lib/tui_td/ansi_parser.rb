@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "tansu"
+require "tans-parser"
 
 module TUITD
-  ANSIParser = Tansu::ANSIParser
+  ANSIParser = TansParser::ANSIParser
 end

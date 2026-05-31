@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-require "tansu"
+require "tans-parser"
 
 module TUITD
-  State = Tansu::State
+  State = TansParser::State
 end
