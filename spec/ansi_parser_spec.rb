@@ -255,6 +255,34 @@ RSpec.describe TUITD::ANSIParser do
       expect(state[:rows][0][3][:char]).to eq(" ")
     end
 
+    it "erase operations reset all cell attributes, not just char" do
+      raw = "\e[48;5;236mHello\e[0m\e[2K"
+      state = described_class.parse(raw, 10, 40)
+
+      cell = state[:rows][0][0]
+      expect(cell[:char]).to eq(" ")
+      expect(cell[:bg]).to eq("default")
+      expect(cell[:fg]).to eq("default")
+      expect(cell[:bold]).to be false
+      expect(cell[:italic]).to be false
+      expect(cell[:underline]).to be false
+      expect(cell[:blink]).to be false
+    end
+
+    it "erase-right after colored text resets background" do
+      raw = "\e[48;5;236m#{"X" * 20}\e[0m\e[10D\e[0K"
+      state = described_class.parse(raw, 10, 40)
+
+      # cells before column 10: X with bg=color236
+      expect(state[:rows][0][0][:char]).to eq("X")
+      expect(state[:rows][0][0][:bg]).to eq("color236")
+
+      # cells from column 10: erased, all attributes default
+      expect(state[:rows][0][10][:char]).to eq(" ")
+      expect(state[:rows][0][10][:bg]).to eq("default")
+      expect(state[:rows][0][10][:fg]).to eq("default")
+    end
+
     # ---- Multi-byte UTF-8 ----
 
     it "handles multi-byte UTF-8 characters" do

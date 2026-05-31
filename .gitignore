@@ -7,4 +7,5 @@ vendor/bundle/
 *.gif
 tmp/
 Gemfile.lock
+BUG_HANDOFF_*
 
