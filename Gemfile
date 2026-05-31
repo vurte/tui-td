@@ -12,6 +12,7 @@ gem "rspec", "~> 3.12"
 gem "rubocop", "~> 1.50"
 gem "rubocop-rake", "~> 0.7"
 gem "rubocop-rspec", "~> 3.6"
+gem "tansu", path: "/Users/halukdurmus/Development/tansu"
 
 gem "bundler-audit", "~> 0.9"
 gem "reek", "~> 6.3"
