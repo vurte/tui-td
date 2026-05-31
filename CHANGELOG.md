@@ -1,6 +1,24 @@
 # CHANGELOG
 
-# CHANGELOG
+## 0.2.12
+
+### Security
+
+- Command injection prevention: use Shellwords.shellsplit + array form of PTY.spawn
+- Environment variable sanitization: block dangerous vars (PATH, LD_PRELOAD, etc.)
+- Path traversal prevention: validate output paths for screenshot/HTML
+- ReDoS prevention: add regex timeout in find_text
+
+### Fixed
+
+- ANSI erase operations (ED/EL) now reset all cell attributes (fg, bg, bold, italic,
+  underline), not just the character — colors and styles no longer leak across lines
+
+### Architecture
+
+- Extract ANSIParser, ANSIUtils, and State into standalone tans-parser gem (v0.1.0)
+- Add tans-parser as a runtime dependency (~>0.1)
+- Replace extracted unit tests with forwarder integration smoke tests
 
 ## 0.2.11
 
