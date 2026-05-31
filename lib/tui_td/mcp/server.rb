@@ -60,6 +60,8 @@ module TUITD
         @driver&.close
       end
 
+      ALLOWED_OUTPUT_DIRS = ["/tmp"].freeze
+
       private
 
       def handle_request(request)
@@ -433,7 +435,7 @@ module TUITD
 
       def call_tui_screenshot(args)
         ensure_driver!
-        path = args["path"] || "/tmp/tui_td_#{Time.now.to_i}.png"
+        path = safe_path(args["path"], ext: "png")
         result = @driver.screenshot(path)
         "OK: Screenshot saved to #{result}"
       end
@@ -444,8 +446,9 @@ module TUITD
         renderer = HtmlRenderer.new(@driver.state_data)
 
         if path
-          renderer.render(path)
-          "OK: HTML saved to #{path}"
+          safe = safe_path(path, ext: "html")
+          renderer.render(safe)
+          "OK: HTML saved to #{safe}"
         else
           renderer.to_html
         end
@@ -492,6 +495,17 @@ module TUITD
       end
 
       # --- Helpers ---
+
+      def safe_path(user_path, ext:)
+        default = File.join("/tmp", "tui_td_#{Time.now.to_i}.#{ext}")
+        resolved = File.expand_path(user_path || default)
+
+        unless ALLOWED_OUTPUT_DIRS.any? { |dir| resolved.start_with?(File.expand_path(dir)) }
+          raise TUITD::Error, "Output path must be under one of: #{ALLOWED_OUTPUT_DIRS.join(", ")}"
+        end
+
+        resolved
+      end
 
       def ensure_driver!
         raise Error, "No TUI session active. Call tui_start first." if @driver.nil?

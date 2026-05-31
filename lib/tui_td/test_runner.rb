@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
 
 require "json"
+require "shellwords"
 
 module TUITD
   # Executes TUI tests defined in JSON format.
@@ -124,13 +125,13 @@ module TUITD
 
                 when "screenshot"
                   ensure_driver!(driver)
-                  path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.png"
+                  path = safe_output_path(value, "png")
                   driver.screenshot(path)
                   Result.new(step: action, passed: true, message: "Saved: #{path}")
 
                 when "html"
                   ensure_driver!(driver)
-                  path = value.is_a?(String) ? value : "/tmp/tui_td_#{Time.now.to_i}.html"
+                  path = safe_output_path(value, "html")
                   HtmlRenderer.new(driver.state_data).render(path)
                   Result.new(step: action, passed: true, message: "Saved: #{path}")
 
@@ -194,7 +195,20 @@ module TUITD
       }
     end
 
+    ALLOWED_OUTPUT_DIRS = ["/tmp"].freeze
+
     private
+
+    def safe_output_path(value, ext)
+      default = File.join("/tmp", "tui_td_#{Time.now.to_i}.#{ext}")
+      resolved = File.expand_path(value.is_a?(String) ? value : default)
+
+      unless ALLOWED_OUTPUT_DIRS.any? { |dir| resolved.start_with?(File.expand_path(dir)) }
+        raise TUITD::Error, "Output path must be under one of: #{ALLOWED_OUTPUT_DIRS.join(", ")}"
+      end
+
+      resolved
+    end
 
     def ensure_driver!(driver)
       raise Error, "No session. Add a 'start' step first." if driver.nil?
@@ -265,4 +279,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength

@@ -269,7 +269,22 @@ RSpec.describe TUITD::State do
       state = make_state(rows: 1, cols: 20, grid: grid)
       results = state.find_text(/\d{3}/)
       expect(results.size).to eq(1)
-      expect(results[0][:text]).to eq(/\d{3}/)
+      expect(results[0][:col]).to eq(4)
+      expect(results[0][:full_line]).to include("abc 123 def")
+    end
+
+    it "does not hang on ReDoS pattern" do
+      grid = make_grid(1, 100)
+      "#{"a" * 50}!".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(rows: 1, cols: 100, grid: grid)
+      # Evil regex with exponential backtracking — must not hang
+      start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      results = state.find_text(/(a+)+b/)
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
+      # Must complete under 10 seconds (timeout is 5s, plus overhead)
+      expect(elapsed).to be < 10
+      # The pattern "b" doesn't appear, so results should be empty
+      expect(results).to be_an(Array)
     end
   end
 

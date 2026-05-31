@@ -34,12 +34,36 @@ RSpec.describe TUITD::Driver do
     end
 
     it "accepts custom environment variables" do
-      driver = described_class.new("echo $FOO", env: { "FOO" => "bar" })
+      driver = described_class.new("bash -c 'echo $FOO'", env: { "FOO" => "bar" })
       driver.start
       text = driver.state[:rows][0].map { |c| c[:char] }.join
       expect(text).to include("bar")
     ensure
       driver.close
+    end
+
+    it "rejects forbidden environment variables" do
+      driver = described_class.new("bash -c 'echo $PATH'",
+                                   env: { "FOO" => "bar", "PATH" => "/evil/bin", "LD_PRELOAD" => "/evil.so" },)
+      # PATH and LD_PRELOAD should be stripped by sanitize_env
+      env_ivar = driver.instance_variable_get(:@env)
+      expect(env_ivar.keys).to include("FOO")
+      expect(env_ivar.keys).not_to include("PATH")
+      expect(env_ivar.keys).not_to include("LD_PRELOAD")
+    end
+
+    it "does not execute shell metacharacters" do
+      marker = "/tmp/tui_td_injection_test_#{Process.pid}"
+      FileUtils.rm_f(marker)
+      # ; touch /tmp/... would create a file if a shell were involved
+      driver = described_class.new("echo safe; touch #{marker}")
+      driver.start
+      driver.wait_for_exit
+      # The "; touch ..." part must not be executed
+      expect(File.exist?(marker)).to be false
+    ensure
+      driver&.close
+      FileUtils.rm_f(marker)
     end
   end
 
@@ -229,7 +253,7 @@ RSpec.describe TUITD::Driver do
     end
 
     it "returns non-zero for failing command" do
-      driver = described_class.new("exit 42")
+      driver = described_class.new("bash -c 'exit 42'")
       driver.start
       driver.wait_for_exit
       expect(driver.exitstatus).to eq(42)

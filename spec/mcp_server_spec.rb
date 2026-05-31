@@ -252,6 +252,49 @@ RSpec.describe TUITD::MCP::Server do
       end
     end
 
+    describe "tui_screenshot path traversal" do
+      it "rejects path outside /tmp" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        path = "/etc/evil.png"
+        expect { server.send(:call_tui_screenshot, { "path" => path }) }
+          .to raise_error(TUITD::Error, /Output path must be under/)
+      ensure
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
+      end
+
+      it "rejects dot-dot traversal" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        path = "/tmp/../../../etc/evil.png"
+        expect { server.send(:call_tui_screenshot, { "path" => path }) }
+          .to raise_error(TUITD::Error, /Output path must be under/)
+      ensure
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
+      end
+    end
+
+    describe "tui_html_render path traversal" do
+      it "rejects path outside /tmp" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        path = "/etc/evil.html"
+        expect { server.send(:call_tui_html_render, { "path" => path }) }
+          .to raise_error(TUITD::Error, /Output path must be under/)
+      ensure
+        begin
+          server.send(:call_tui_close)
+        rescue StandardError
+          nil
+        end
+      end
+    end
+
     describe "tui_close" do
       it "closes the session" do
         server.send(:call_tui_start, { "command" => "echo ok" })

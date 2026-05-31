@@ -2,6 +2,8 @@
 
 # rubocop:disable Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity
 
+require "timeout"
+
 module TUITD
   # Represents the parsed state of a terminal screen.
   # Provides high-level query methods for AI consumption.
@@ -37,15 +39,33 @@ module TUITD
       @grid[row][col, length].map { |c| c[:char] }.join
     end
 
-    # Search for text across the entire terminal
+    # Search for text across the entire terminal.
+    # For regex patterns, matching is bounded by a timeout to prevent ReDoS.
+    TEXT_SEARCH_TIMEOUT = 5
+
     def find_text(pattern)
       results = []
+      is_regex = pattern.is_a?(Regexp)
+
       @grid.each_with_index do |row, ri|
         text = row.map { |c| c[:char] }.join
         pos = 0
-        while (match = text.index(pattern, pos))
-          results << { row: ri, col: match, text: pattern, full_line: text }
-          pos = match + 1
+        begin
+          if is_regex
+            Timeout.timeout(TEXT_SEARCH_TIMEOUT) do
+              while (match = text.index(pattern, pos))
+                results << { row: ri, col: match, text: pattern.to_s, full_line: text }
+                pos = match + 1
+              end
+            end
+          else
+            while (match = text.index(pattern, pos))
+              results << { row: ri, col: match, text: pattern, full_line: text }
+              pos = match + 1
+            end
+          end
+        rescue Timeout::Error
+          # Stop processing on timeout — return partial results
         end
       end
       results

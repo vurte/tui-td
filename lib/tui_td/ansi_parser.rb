@@ -625,11 +625,11 @@ module TUITD
       c = cursor[:col]
 
       # Erase from cursor to end of line
-      (c...cols).each { |ci| grid[r][ci][:char] = " " if r < rows }
+      (c...cols).each { |ci| _erase_cell(grid[r][ci]) if r < rows }
 
       # Erase remaining lines
       ((r + 1)...rows).each do |ri|
-        cols.times { |ci| grid[ri][ci][:char] = " " }
+        cols.times { |ci| _erase_cell(grid[ri][ci]) }
       end
     end
 
@@ -639,34 +639,38 @@ module TUITD
 
       # Erase lines above cursor
       (0...r).each do |ri|
-        cols.times { |ci| grid[ri][ci][:char] = " " }
+        cols.times { |ci| _erase_cell(grid[ri][ci]) }
       end
 
       # Erase from start of line to cursor
-      (0..c).each { |ci| grid[r][ci][:char] = " " }
+      (0..c).each { |ci| _erase_cell(grid[r][ci]) }
     end
 
     def self._erase_all(grid, rows, cols)
       rows.times do |ri|
-        cols.times { |ci| grid[ri][ci][:char] = " " }
+        cols.times { |ci| _erase_cell(grid[ri][ci]) }
       end
+    end
+
+    def self._erase_cell(cell)
+      cell.merge!(default_cell)
     end
 
     def self._erase_line_right(cursor, grid, cols)
       r = cursor[:row]
       c = cursor[:col]
-      (c...cols).each { |ci| grid[r][ci][:char] = " " if r < grid.length }
+      (c...cols).each { |ci| _erase_cell(grid[r][ci]) if r < grid.length }
     end
 
     def self._erase_line_left(cursor, grid, _cols)
       r = cursor[:row]
       c = cursor[:col]
-      (0..c).each { |ci| grid[r][ci][:char] = " " if r < grid.length }
+      (0..c).each { |ci| _erase_cell(grid[r][ci]) if r < grid.length }
     end
 
     def self._erase_line(cursor, grid, cols)
       r = cursor[:row]
-      cols.times { |ci| grid[r][ci][:char] = " " if r < grid.length }
+      cols.times { |ci| _erase_cell(grid[r][ci]) if r < grid.length }
     end
 
     # rubocop:disable Metrics/CyclomaticComplexity

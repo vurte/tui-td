@@ -6,6 +6,7 @@
 require "pty"
 require "io/console"
 require "json"
+require "shellwords"
 
 module TUITD
   # Drives a TUI application in a pseudo-terminal (PTY).
@@ -20,6 +21,9 @@ module TUITD
   #   driver.close
   #
   class Driver
+    FORBIDDEN_ENV = %w[PATH LD_PRELOAD LD_LIBRARY_PATH DYLD_INSERT_LIBRARIES
+                       DYLD_FRAMEWORK_PATH RUBYOPT HOME RUBYLIB GEM_HOME GEM_PATH].freeze
+
     attr_reader :command, :state
 
     def initialize(command, rows: 40, cols: 120, timeout: 30, chdir: nil, env: {})
@@ -28,7 +32,7 @@ module TUITD
       @cols = cols
       @timeout = timeout
       @chdir = chdir
-      @env = env
+      @env = sanitize_env(env)
       @state = nil
       @stdin = nil
       @stdout = nil
@@ -46,7 +50,8 @@ module TUITD
       spawn_opts = {}
       spawn_opts[:chdir] = @chdir if @chdir
 
-      @stdout, @stdin, @pid = PTY.spawn(env, @command, spawn_opts)
+      cmd_args = Shellwords.shellsplit(@command)
+      @stdout, @stdin, @pid = PTY.spawn(env, *cmd_args, spawn_opts)
       @stdout.winsize = [@rows, @cols] # Set PTY window size for TUIs that check winsize
       @wait_thr = Process.detach(@pid)
 
@@ -244,6 +249,10 @@ module TUITD
         nil
       end
       @reader_thread = nil
+    end
+
+    def sanitize_env(env)
+      env.reject { |k, _| FORBIDDEN_ENV.include?(k.to_s.upcase) }
     end
 
     def ensure_running!
