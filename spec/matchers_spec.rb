@@ -176,6 +176,65 @@ RSpec.describe TUITD::Matchers do
     end
   end
 
+  describe "selector matchers" do
+    it "have_button passes when button exists" do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_button("OK")
+    end
+
+    it "have_button fails when button missing" do
+      grid = make_grid(3, 20)
+      "hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect { expect(state).to have_button("OK") }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "have_dialog passes when dialog exists" do
+      grid = make_grid(4, 20)
+      "┌──┐".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      "│OK│".chars.each_with_index { |c, i| grid[2][5 + i][:char] = c }
+      "└──┘".chars.each_with_index { |c, i| grid[3][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_dialog
+    end
+
+    it "have_dialog fails when no dialog" do
+      state = make_state
+      expect { expect(state).to have_dialog }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "have_checkbox passes when checkbox exists" do
+      grid = make_grid(5, 30)
+      "[x] Enable".chars.each_with_index { |c, i| grid[2][i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_checkbox("Enable")
+    end
+
+    it "have_checkbox with checked passes only for checked" do
+      grid = make_grid(5, 30)
+      "[ ] Option".chars.each_with_index { |c, i| grid[2][i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_checkbox("Option")
+      expect { expect(state).to have_checkbox("Option").checked }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "have_role works with generic role + text filter" do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect(state).to have_role(:button, text: "OK")
+    end
+
+    it "have_role fails with wrong text filter" do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect { expect(state).to have_role(:button, text: "Cancel") }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+  end
+
   describe "auto-wait with Driver" do
     it "auto-waits on have_text when given a Driver" do
       driver = TUITD::Driver.new("echo hello world", rows: 3, cols: 30, timeout: 5)

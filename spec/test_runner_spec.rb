@@ -477,4 +477,86 @@ RSpec.describe TUITD::TestRunner do
       expect(result[:results][2][:message]).to include("Exit status 2")
     end
   end
+
+  describe "selector assertions" do
+    it "asserts button exists by text" do
+      plan = {
+        name: "button test",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "printf '[ OK ]'" },
+          { wait_for_stable: true },
+          { assert_button: "OK" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "fails assert_button when button not found" do
+      plan = {
+        name: "button fail",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "echo hello" },
+          { wait_for_stable: true },
+          { assert_button: "OK" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+    end
+
+    it "asserts dialog exists" do
+      plan = {
+        name: "dialog test",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "printf '\n┌──┐\n│OK│\n└──┘'" },
+          { wait_for_stable: true },
+          { assert_dialog: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts checkbox with checked state" do
+      plan = {
+        name: "checkbox test",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "printf '[x] Enable'" },
+          { wait_for_stable: true },
+          { assert_checkbox: "Enable", checked: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts role generically" do
+      plan = {
+        name: "role test",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "printf '(Cancel)'" },
+          { wait_for_stable: true },
+          { assert_role: "Cancel", role: "button" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+  end
 end

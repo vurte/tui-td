@@ -163,6 +163,19 @@ module TUITD
                     Result.new(step: action, passed: false, message: "Exit status #{actual}, expected #{expected}")
                   end
 
+                when "assert_button"
+                  check_role(driver, :button, value.to_s)
+
+                when "assert_dialog"
+                  check_role(driver, :dialog, nil)
+
+                when "assert_checkbox"
+                  check_role(driver, :checkbox, value.to_s, checked: step[:checked])
+
+                when "assert_role"
+                  role = step[:role]&.to_sym
+                  check_role(driver, role, value.to_s)
+
                 when "close"
                   driver&.close
                   driver = nil
@@ -210,6 +223,25 @@ module TUITD
     ALLOWED_OUTPUT_DIRS = ["/tmp"].freeze
 
     private
+
+    def check_role(driver, role, text, checked: nil)
+      ensure_driver!(driver)
+      state = State.new(driver.state_data)
+      selector = Selector.new(state)
+      elements = selector.get_by_role(role)
+      elements = elements.select { |e| e.text&.include?(text.to_s) } if text
+      elements = elements.select { |e| e.checked == checked } unless checked.nil?
+
+      action = "assert_#{role}"
+      if elements.any?
+        count = elements.size
+        desc = text ? "#{role} #{text.inspect}" : role.to_s
+        Result.new(step: action, passed: true, message: "Found #{count} #{desc} element(s)")
+      else
+        desc = text ? "#{role} with text #{text.inspect}" : role.to_s
+        Result.new(step: action, passed: false, message: "No #{desc} found")
+      end
+    end
 
     def safe_output_path(value, ext)
       default = File.join("/tmp", "tui_td_#{Time.now.to_i}.#{ext}")

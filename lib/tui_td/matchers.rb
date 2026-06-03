@@ -131,5 +131,84 @@ module TUITD
         "expected exit status not to be #{expected}"
       end
     end
+
+    # Selector-based matchers — work with both State and Driver (auto-wait)
+
+    RSpec::Matchers.define :have_button do |expected|
+      match do |actual|
+        Matchers.auto_wait(actual) do |s|
+          Selector.new(s).get_by_text(expected).any? { |e| e.role == :button }
+        end
+      end
+
+      description { "have button #{expected.inspect}" }
+      failure_message { |_actual| "expected terminal to have a button #{expected.inspect}" }
+      failure_message_when_negated { |_actual| "expected terminal NOT to have a button #{expected.inspect}" }
+    end
+
+    RSpec::Matchers.define :have_dialog do
+      match do |actual|
+        Matchers.auto_wait(actual) { |s| Selector.new(s).dialogs.any? }
+      end
+
+      description { "have a dialog" }
+      failure_message { |_actual| "expected terminal to have a dialog" }
+      failure_message_when_negated { |_actual| "expected terminal NOT to have a dialog" }
+    end
+
+    RSpec::Matchers.define :have_checkbox do |expected|
+      chain(:checked) { @checked = true }
+
+      match do |actual|
+        Matchers.auto_wait(actual) do |s|
+          checkboxes = Selector.new(s).checkboxes
+          found = checkboxes.select { |e| e.text&.include?(expected) }
+          found = found.select(&:checked) if @checked
+          found.any?
+        end
+      end
+
+      description do
+        desc = "have checkbox #{expected.inspect}"
+        desc += " (checked)" if @checked
+        desc
+      end
+      failure_message do |_actual|
+        desc = "expected terminal to have checkbox #{expected.inspect}"
+        desc += " (checked)" if @checked
+        desc
+      end
+      failure_message_when_negated do |_actual|
+        desc = "expected terminal NOT to have checkbox #{expected.inspect}"
+        desc += " (checked)" if @checked
+        desc
+      end
+    end
+
+    RSpec::Matchers.define :have_role do |role, text: nil|
+      match do |actual|
+        Matchers.auto_wait(actual) do |s|
+          elements = Selector.new(s).get_by_role(role)
+          elements = elements.select { |e| e.text&.include?(text) } if text
+          elements.any?
+        end
+      end
+
+      description do
+        desc = "have role :#{role}"
+        desc += " with text #{text.inspect}" if text
+        desc
+      end
+      failure_message do |_actual|
+        desc = "expected terminal to have a :#{role}"
+        desc += " with text #{text.inspect}" if text
+        desc
+      end
+      failure_message_when_negated do |_actual|
+        desc = "expected terminal NOT to have a :#{role}"
+        desc += " with text #{text.inspect}" if text
+        desc
+      end
+    end
   end
 end
