@@ -1,13 +1,22 @@
 # TUI Test Drive
 
-Testing framework for Terminal User Interfaces (TUIs) with MCP support.
+[![Gem Version](https://badge.fury.io/rb/tui-td.svg)](https://rubygems.org/gems/tui-td)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
 
-**tui-td** lets you:
-1. Start a TUI application in a virtual terminal (PTY)
-2. See the output — as structured JSON, plain text, PNG screenshots, or HTML renders
-3. Send input — keystrokes, text, control sequences
-4. Analyze output — find text, check colors, detect cursor position
-5. Loop — adjust and retest without manual intervention
+Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders. Includes an MCP server for AI-driven testing, auto-wait RSpec matchers, and semantic selectors.
+
+> New to tui-td? Jump to [Quick Start](docs/quick_start.md).
+
+**What tui-td gives you:**
+
+1. **Start any TUI** in a virtual terminal (PTY) with `Driver` or JSON test plans
+2. **Auto-wait assertions** — matchers automatically retry until the condition is met or timeout
+3. **Semantic selectors** — `get_by_role(:button)`, `get_by_role(:dialog)`, `within { }` scoping
+4. **Multiple output formats** — structured JSON, plain text, PNG screenshots, HTML renders
+5. **JSON test runner** — language-agnostic, 15+ step types, CI-friendly
+6. **RSpec matchers** — `have_text`, `have_fg`, `have_button`, `have_dialog`, and more
+7. **MCP server** — AI agents can drive TUIs via JSON-RPC over stdio
+8. **Pure Ruby rendering** — embedded Spleen font + 2766 Unifont glyphs, no native deps required
 
 ## Installation
 

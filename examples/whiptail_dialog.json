@@ -1,0 +1,21 @@
+{
+  "name": "Dialog interaction via whiptail",
+  "rows": 10,
+  "cols": 50,
+  "timeout": 10,
+  "before_all": [
+    { "start": "whiptail --yesno 'Proceed with installation?' 8 40", "env": { "TERM": "xterm-256color" } },
+    { "wait_for_text": "Proceed" }
+  ],
+  "steps": [
+    { "assert_dialog": true },
+    { "assert_text": "Proceed with installation" },
+    { "assert_button": "Yes" },
+    { "assert_button": "No" }
+  ],
+  "after_all": [
+    { "send_key": "ctrl_c" },
+    { "wait_for_exit": true },
+    { "close": true }
+  ]
+}
