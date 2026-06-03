@@ -1,5 +1,33 @@
 # CHANGELOG
 
+## 0.2.13
+
+### Added
+
+- Auto-wait mechanisms: `Driver#wait_for(predicate)` with adaptive polling (10ms → 100ms),
+  auto-wait on RSpec matchers (3s timeout when given a Driver), auto-wait on JSON test
+  assertions (2s per-check timeout)
+- Semantic selectors: `Element` struct and `Selector` class with heuristic role detection
+  for buttons, checkboxes, dialogs, statusbars, and progress bars
+- RSpec matchers: `have_button`, `have_dialog`, `have_checkbox`, `have_role`
+- JSON test steps: `assert_button`, `assert_dialog`, `assert_checkbox`, `assert_role`
+- `within` scoping for filtering elements by bounding box
+- `poll_interval` parameter on Driver for configurable polling speed
+
+### Changed
+
+- `wait_for_stable` uses buffer-size tracking instead of full grid parse for performance
+- Output buffer capped at 10 MB (ring buffer) to prevent unbounded memory growth
+- Delegate `Selector` and `Element` to tans-parser 0.1.1
+
+### Documentation
+
+- Add CONTRIBUTING.md with development setup, code quality, and PR workflow
+- Add docs/quick_start.md with 2-minute getting-started tutorial
+- Add docs/faq.md covering 8 common troubleshooting topics
+- Add whiptail dialog example (`examples/whiptail_dialog.json`)
+- Update CLI help (`tui-td help test`, `tui-td help rspec`) with new steps and matchers
+
 ## 0.2.12
 
 ### Security

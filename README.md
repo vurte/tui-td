@@ -282,6 +282,10 @@ tui-td test examples/echo_test.json
 | `assert_exit` | `N` | Assert the process exit code equals N |
 | `screenshot` | `"path"` | Save PNG screenshot |
 | `html` | `"path"` | Save HTML render for browser viewing |
+| `assert_button` | `"text"` | Assert a button with given text is visible (`[ OK ]`, `(Cancel)`, `<Submit>`) |
+| `assert_dialog` | — | Assert a dialog (box-drawing region) is visible |
+| `assert_checkbox` | `"label", "checked": true` | Assert a checkbox with given label (and optionally checked state) |
+| `assert_role` | `":button", "text": "OK"` | Generic role assertion (`:button`, `:checkbox`, `:dialog`, `:statusbar`, `:progress`) |
 | `close` | — | Close the TUI |
 
 Example with `html` step for before/after snapshots:
@@ -356,6 +360,10 @@ end
 | `have_fg("color").at(row, col)` | Assert foreground color at position |
 | `have_bg("color").at(row, col)` | Assert background color at position |
 | `have_style.at(row, col).with(bold: true, ...)` | Assert cell style |
+| `have_button("OK")` | Assert a button with given text is visible |
+| `have_dialog` | Assert a dialog (box-drawing region) is visible |
+| `have_checkbox("Label").checked` | Assert a checkbox with given label (chain `.checked`) |
+| `have_role(:button, text: "OK")` | Generic role assertion with optional text filter |
 | `have_exit_status(N)` | Assert the driver process exit status equals N |
 
 ## MCP Server — AI Integration

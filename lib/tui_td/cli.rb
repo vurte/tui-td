@@ -410,6 +410,22 @@ module TUITD
           {"close": true}
               Close the driver session (force-kill if needed).
 
+          {"assert_button": "<text>"}
+              Find a button with the given text. Buttons are detected
+              by patterns like [ OK ], (Cancel), <Submit>.
+
+          {"assert_dialog": true}
+              Assert that at least one dialog (box-drawing region) is visible.
+
+          {"assert_checkbox": "<text>", "checked": true}
+              Find a checkbox with the given label text. Optional "checked"
+              (true/false) to match checked state. Detects [x], [*], [ ] at
+              line starts.
+
+          {"assert_role": ":button", "text": "OK"}
+              Generic role assertion. Accepts :button, :checkbox, :dialog,
+              :statusbar, :progress. Optional "text" filter.
+
         Example test file: examples/echo_test.json
       HELP
       exit 0
@@ -469,6 +485,32 @@ module TUITD
         have_style.at(row, col).with(bold: true, italic: false, ...)
             Assert style attributes at [row, col] match the given hash.
             Usage: expect(state).to have_style.at(0, 0).with(bold: true)
+
+        Selector matchers (semantic UI element detection)
+        -------------------------------------------------
+
+        These matchers detect UI elements by their visual appearance:
+
+        have_button("OK")
+            Passes if a button with the given text is visible.
+            Detects [ OK ], (Cancel), <Submit> patterns.
+            Usage: expect(state).to have_button("OK")
+
+        have_dialog
+            Passes if a dialog (box-drawing character region) is visible.
+            Usage: expect(state).to have_dialog
+
+        have_checkbox("Enable").checked
+            Passes if a checkbox with the given label is visible.
+            Chain .checked to require the box to be checked.
+            Detects [x], [*], [ ] at line starts.
+            Usage: expect(state).to have_checkbox("Enable logging")
+            Usage: expect(state).to have_checkbox("Auto-save").checked
+
+        have_role(:button, text: "OK")
+            Generic role matcher. Accepts :button, :checkbox, :dialog,
+            :statusbar, :progress. Optional text: filter.
+            Usage: expect(state).to have_role(:statusbar)
 
         Driver matchers (work on TUITD::Driver, not State)
         --------------------------------------------------
