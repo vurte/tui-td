@@ -92,6 +92,7 @@ Examples:
 Interactive commands (drive mode):
   state              Show terminal state as pretty JSON
   raw                Show raw ANSI output
+  elements           Show detected UI elements (buttons, dialogs, etc.)
   key <name>         Send keystroke (enter, tab, escape, up, down, left, right,
                      backspace, ctrl_c, ctrl_d)
   <text>             Send text to the TUI
@@ -390,6 +391,7 @@ tui-td serve
 | `tui_wait_for_exit` | Wait until the TUI process exits. Returns exit status. |
 | `tui_exit_status` | Get the exit status code (nil if still running). |
 | `tui_find_text` | Search for text or regex in terminal state. Returns positions of all matches. |
+| `tui_find_elements` | Detect UI elements (buttons, checkboxes, dialogs, etc.) with optional role/text filters. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
@@ -436,10 +438,13 @@ Add to your MCP client configuration:
 // 8. Search for text in the terminal
 {"method": "tools/call", "params": {"name": "tui_find_text", "arguments": {"pattern": "error|fail"}}}
 
-// 9. Check exit status (or wait for exit)
+// 9. Find UI elements by role
+{"method": "tools/call", "params": {"name": "tui_find_elements", "arguments": {"role": "button"}}}
+
+// 10. Check exit status (or wait for exit)
 {"method": "tools/call", "params": {"name": "tui_exit_status", "arguments": {}}}
 
-// 10. Clean up
+// 11. Clean up
 {"method": "tools/call", "params": {"name": "tui_close", "arguments": {}}}
 ```
 
