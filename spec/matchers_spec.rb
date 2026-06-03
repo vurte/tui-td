@@ -175,4 +175,55 @@ RSpec.describe TUITD::Matchers do
       expect { expect(driver).to have_exit_status(0) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
     end
   end
+
+  describe "auto-wait with Driver" do
+    it "auto-waits on have_text when given a Driver" do
+      driver = TUITD::Driver.new("echo hello world", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_text("hello")
+    ensure
+      driver&.close
+    end
+
+    it "eventually fails have_text on Driver when text never appears" do
+      driver = TUITD::Driver.new("echo done", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+      expect { expect(driver).to have_text("NEVER") }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_regex when given a Driver" do
+      driver = TUITD::Driver.new("echo success", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_regex(/suc/)
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_fg when given a Driver" do
+      driver = TUITD::Driver.new("printf '\e[32mgreen\e[0m'", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      expect(driver).to have_fg("green").at(0, 0)
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_bg when given a Driver" do
+      driver = TUITD::Driver.new("printf '\e[44mblue\e[0m'", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      expect(driver).to have_bg("blue").at(0, 0)
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_style when given a Driver" do
+      driver = TUITD::Driver.new("printf '\e[1mbold\e[0m'", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      expect(driver).to have_style.at(0, 0).with(bold: true)
+    ensure
+      driver&.close
+    end
+  end
 end

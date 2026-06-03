@@ -26,7 +26,9 @@ module TUITD
 
     attr_reader :command, :state
 
-    def initialize(command, rows: 40, cols: 120, timeout: 30, chdir: nil, env: {})
+    MAX_BUFFER_SIZE = 10 * 1024 * 1024 # 10 MB ring buffer
+
+    def initialize(command, rows: 40, cols: 120, timeout: 30, chdir: nil, env: {}, poll_interval: nil)
       @command = command
       @rows = rows
       @cols = cols
@@ -41,6 +43,7 @@ module TUITD
       @output_mutex = Mutex.new
       @reader_thread = nil
       @reader_running = false
+      @poll_interval = poll_interval
     end
 
     # Start the TUI application in a PTY
@@ -92,9 +95,34 @@ module TUITD
       end
     end
 
+    # Wait until the predicate returns true for the current terminal state.
+    # Polls with adaptive intervals: 10ms → 25ms → 50ms → 100ms.
+    # Use a custom poll_interval to bypass adaptive behavior.
+    #
+    #   driver.wait_for { |state| state.find_text("Ready").any? }
+    #   driver.wait_for(timeout: 5) { |state| state.foreground_at(0, 0) == "green" }
+    #
+    def wait_for(timeout: nil, &predicate)
+      deadline = monotonic + (timeout || @timeout)
+      loop_count = 0
+      loop do
+        raise TimeoutError, "Timeout waiting for predicate" if monotonic > deadline
+
+        read_available!
+        refresh_state!
+        state_obj = State.new(@state)
+        break if predicate.call(state_obj)
+
+        adaptive_sleep(loop_count)
+        loop_count += 1
+      end
+      @state
+    end
+
     # Wait until output contains the given text
     def wait_for_text(text)
       deadline = monotonic + @timeout
+      loop_count = 0
       loop do
         raise TimeoutError, "Timeout waiting for: #{text.inspect}" if monotonic > deadline
 
@@ -102,7 +130,8 @@ module TUITD
         found = @output_mutex.synchronize { @output_buffer.include?(text) }
         break if found
 
-        sleep 0.05
+        adaptive_sleep(loop_count)
+        loop_count += 1
       end
       refresh_state!
     end
@@ -111,28 +140,27 @@ module TUITD
     def wait_for_stable(stable_ms: 300)
       deadline = monotonic + @timeout
       last_change = monotonic
-      last_grid = nil
+      last_buffer_size = @output_mutex.synchronize { @output_buffer.bytesize }
+      loop_count = 0
 
       loop do
         raise TimeoutError, "Timeout waiting for stable output" if monotonic > deadline
 
-        had_data = read_available!
+        read_available!
+        current_buffer_size = @output_mutex.synchronize { @output_buffer.bytesize }
         process_alive = process_alive?
 
-        if had_data
-          current_grid = parse_grid_snapshot
-          if current_grid != last_grid
-            last_grid = current_grid
-            last_change = monotonic
-          end
+        if current_buffer_size != last_buffer_size
+          last_buffer_size = current_buffer_size
+          last_change = monotonic
         elsif !process_alive
-          # Process exited and no more data — final state reached
           break
-        elsif last_grid && (monotonic - last_change) * 1000 >= stable_ms # rubocop:disable Lint/DuplicateBranch
+        elsif (monotonic - last_change) * 1000 >= stable_ms # rubocop:disable Lint/DuplicateBranch
           break
         end
 
-        sleep 0.05
+        adaptive_sleep(loop_count)
+        loop_count += 1
       end
       refresh_state!
     end
@@ -225,6 +253,7 @@ module TUITD
     def _start_reader_thread
       @reader_running = true
       @reader_thread = Thread.new do
+        loop_count = 0
         loop do
           break unless @reader_running
 
@@ -233,7 +262,8 @@ module TUITD
           rescue IOError, Errno::EIO
             break
           end
-          sleep 0.05
+          adaptive_sleep(loop_count)
+          loop_count += 1
         end
       end
     end
@@ -260,12 +290,30 @@ module TUITD
       raise Error, "Process exited (status: #{@wait_thr&.value&.exitstatus})" unless @wait_thr&.alive?
     end
 
+    def adaptive_sleep(loop_count)
+      interval = if @poll_interval
+                   @poll_interval
+                 elsif loop_count < 40   # ~0-2s: 10ms
+                   0.01
+                 elsif loop_count < 160  # ~2-5s: 25ms
+                   0.025
+                 elsif loop_count < 260  # ~5-10s: 50ms
+                   0.05
+                 else # 10s+: 100ms
+                   0.1
+                 end
+      sleep interval
+    end
+
     def read_available!
       return false unless @stdout
 
       data = @stdout.read_nonblock(4096)
 
-      @output_mutex.synchronize { @output_buffer << data }
+      @output_mutex.synchronize do
+        @output_buffer << data
+        @output_buffer = @output_buffer[-MAX_BUFFER_SIZE..] if @output_buffer.bytesize > MAX_BUFFER_SIZE
+      end
 
       respond_to_dsr if data.include?("\e[6n")
 

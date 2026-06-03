@@ -109,18 +109,30 @@ module TUITD
                 when "assert_style"
                   ensure_driver!(driver)
                   row, col = coords(step)
-                  state = State.new(driver.state_data)
-                  actual = state.style_at(row, col)
-                  expected = {}
-                  expected[:bold] = step[:bold] unless step[:bold].nil?
-                  expected[:italic] = step[:italic] unless step[:italic].nil?
-                  expected[:underline] = step[:underline] unless step[:underline].nil?
-                  match = expected.all? { |k, v| actual[k] == v }
+                  expected_style = {}
+                  expected_style[:bold] = step[:bold] unless step[:bold].nil?
+                  expected_style[:italic] = step[:italic] unless step[:italic].nil?
+                  expected_style[:underline] = step[:underline] unless step[:underline].nil?
+                  actual = nil
+                  match = begin
+                    driver.wait_for(timeout: 2) do |s|
+                      actual = s.style_at(row, col)
+                      expected_style.all? { |k, v| actual[k] == v }
+                    end
+                    true
+                  rescue TimeoutError
+                    false
+                  end
+                  actual ||= begin
+                    state = State.new(driver.state_data)
+                    state.style_at(row, col)
+                  end
                   if match
-                    Result.new(step: action, passed: true, message: "Style at [#{row},#{col}] matches #{expected}")
+                    Result.new(step: action, passed: true,
+                               message: "Style at [#{row},#{col}] matches #{expected_style}",)
                   else
                     Result.new(step: action, passed: false,
-                               message: "Style at [#{row},#{col}] is #{actual}, expected #{expected}",)
+                               message: "Style at [#{row},#{col}] is #{actual}, expected #{expected_style}",)
                   end
 
                 when "screenshot"
@@ -223,7 +235,6 @@ module TUITD
 
     def check_text(driver, value, action)
       ensure_driver!(driver)
-      state = State.new(driver.state_data)
       text = value.to_s
 
       if action == "assert_regex"
@@ -236,7 +247,17 @@ module TUITD
         pattern = text
       end
 
-      found = state.find_text(pattern).any?
+      found = if action == "assert_not_text"
+                state = State.new(driver.state_data)
+                state.find_text(pattern).any?
+              else
+                begin
+                  driver.wait_for(timeout: 2) { |s| s.find_text(pattern).any? }
+                  true
+                rescue TimeoutError
+                  false
+                end
+              end
 
       case action
       when "assert_text"
@@ -266,15 +287,30 @@ module TUITD
       ensure_driver!(driver)
       row, col = coords(step)
       expected = step[:is] || step["is"]
-      state = State.new(driver.state_data)
       label = property == :fg ? "FG" : "BG"
-      actual = property == :fg ? state.foreground_at(row, col) : state.background_at(row, col)
 
-      if actual == expected
+      actual_val = nil
+      found = begin
+        driver.wait_for(timeout: 2) do |s|
+          actual_val = property == :fg ? s.foreground_at(row, col) : s.background_at(row, col)
+          actual_val == expected
+        end
+        true
+      rescue TimeoutError
+        # actual_val holds the last observed value
+        false
+      end
+
+      actual_val ||= begin
+        state = State.new(driver.state_data)
+        property == :fg ? state.foreground_at(row, col) : state.background_at(row, col)
+      end
+
+      if found
         Result.new(step: step.keys.first.to_s, passed: true, message: "#{label} at [#{row},#{col}] is #{expected}")
       else
         Result.new(step: step.keys.first.to_s, passed: false,
-                   message: "#{label} at [#{row},#{col}] is #{actual}, expected #{expected}",)
+                   message: "#{label} at [#{row},#{col}] is #{actual_val}, expected #{expected}",)
       end
     end
   end

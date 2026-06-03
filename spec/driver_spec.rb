@@ -33,6 +33,14 @@ RSpec.describe TUITD::Driver do
       driver.close
     end
 
+    it "accepts a custom poll_interval" do
+      driver = described_class.new("echo hello", poll_interval: 0.01)
+      driver.start
+      expect(driver.state).not_to be_nil
+    ensure
+      driver.close
+    end
+
     it "accepts custom environment variables" do
       driver = described_class.new("bash -c 'echo $FOO'", env: { "FOO" => "bar" })
       driver.start
@@ -190,6 +198,61 @@ RSpec.describe TUITD::Driver do
       driver = described_class.new("echo ok && sleep 5", timeout: 1)
       driver.start
       expect { driver.wait_for_text("NEVER") }.to raise_error(TUITD::TimeoutError, /NEVER/)
+    ensure
+      driver.close
+    end
+  end
+
+  describe "#wait_for" do
+    it "returns when predicate becomes true" do
+      driver = described_class.new('bash -c "sleep 0.1 && echo ready"')
+      driver.start
+      result = driver.wait_for { |s| s.find_text("ready").any? }
+      expect(result).to have_key(:rows)
+    ensure
+      driver.close
+    end
+
+    it "raises TimeoutError when predicate never becomes true" do
+      driver = described_class.new("sleep 5", timeout: 1)
+      driver.start
+      expect { driver.wait_for { |_s| false } }.to raise_error(TUITD::TimeoutError)
+    ensure
+      driver.close
+    end
+
+    it "accepts a custom timeout" do
+      driver = described_class.new("echo ready")
+      driver.start
+      result = driver.wait_for(timeout: 5) { |s| s.find_text("ready").any? }
+      expect(result).to have_key(:rows)
+    ensure
+      driver.close
+    end
+
+    it "passes a State object to the predicate" do
+      driver = described_class.new("echo hello")
+      driver.start
+      driver.wait_for do |s|
+        expect(s).to respond_to(:find_text)
+        expect(s).to respond_to(:foreground_at)
+        expect(s).to respond_to(:style_at)
+        s.find_text("hello").any?
+      end
+    ensure
+      driver.close
+    end
+
+    it "refreshes state between predicate calls" do
+      driver = described_class.new('bash -c "echo first && sleep 0.1 && echo second"', cols: 40)
+      driver.start
+      states_seen = []
+      driver.wait_for do |s|
+        states_seen << s.plain_text.dup
+        s.plain_text.include?("second")
+      end
+      expect(states_seen.size).to be >= 1
+      expect(states_seen.last).to include("second")
     ensure
       driver.close
     end
