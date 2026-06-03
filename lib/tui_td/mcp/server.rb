@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Layout/LineLength
+# rubocop:disable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Layout/LineLength
 
 require "json"
 
@@ -285,6 +285,23 @@ module TUITD
                 },
               },
               {
+                name: "tui_find_elements",
+                description: "Search for UI elements in the terminal state. Returns buttons, checkboxes, dialogs, statusbars, and progress bars detected by heuristic analysis. Optionally filter by role and/or text.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    role: {
+                      type: "string",
+                      description: "Filter by role: button, checkbox, dialog, statusbar, progress. Omit to return all.",
+                    },
+                    text: {
+                      type: "string",
+                      description: "Filter by visible text (partial match). Optional.",
+                    },
+                  },
+                },
+              },
+              {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
@@ -315,7 +332,8 @@ module TUITD
                  when "tui_wait_for_exit" then call_tui_wait_for_exit
                  when "tui_exit_status" then call_tui_exit_status
                  when "tui_find_text" then call_tui_find_text(args)
-                 when "tui_close"     then call_tui_close
+                 when "tui_find_elements" then call_tui_find_elements(args)
+                 when "tui_close" then call_tui_close
                  else
                    return error_response(id, -32_602, "Unknown tool: #{tool_name}")
                  end
@@ -488,6 +506,39 @@ module TUITD
         end
       end
 
+      def call_tui_find_elements(args)
+        ensure_driver!
+        state = TUITD::State.new(@driver.state_data)
+        selector = TUITD::Selector.new(state)
+
+        role = args["role"]&.to_sym
+        text = args["text"]
+
+        elements = if role
+                     selector.get_by_role(role)
+                   else
+                     selector.elements
+                   end
+        elements = elements.select { |e| e.text&.include?(text) } if text
+
+        if elements.empty?
+          desc = role ? "role :#{role}" : "any role"
+          desc += " with text #{text.inspect}" if text
+          "No elements found for #{desc}"
+        else
+          lines = ["Found #{elements.size} element(s):"]
+          elements.each do |el|
+            parts = ["  :#{el.role}"]
+            parts << el.text.inspect if el.text
+            parts << "at [#{el.row},#{el.col}]"
+            parts << "#{el.width}x#{el.height}"
+            parts << "(checked)" if el.checked
+            lines << parts.join(" ")
+          end
+          lines.join("\n")
+        end
+      end
+
       def call_tui_close
         @driver&.close
         @driver = nil
@@ -544,4 +595,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Layout/LineLength
+# rubocop:enable Metrics/ClassLength, Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Layout/LineLength

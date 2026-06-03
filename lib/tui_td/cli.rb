@@ -40,6 +40,7 @@ module TUITD
         opts.separator "Interactive commands (drive mode):"
         opts.separator "  state              Show terminal state as pretty JSON"
         opts.separator "  raw                Show raw ANSI output"
+        opts.separator "  elements           Show detected UI elements (buttons, dialogs, etc.)"
         opts.separator "  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,"
         opts.separator "                     backspace, ctrl_c, ctrl_d)"
         opts.separator "  <text>             Send text to the TUI"
@@ -195,6 +196,14 @@ module TUITD
           elsif input == "exitstatus"
             status = driver.exitstatus
             puts status ? "Exit status: #{status}" : "Process still running"
+          elsif input == "elements"
+            state = State.new(driver.state_data)
+            selector = Selector.new(state)
+            puts "Buttons:    #{selector.buttons.map { |e| "#{e.text}@[#{e.row},#{e.col}]" }.join(", ")}"
+            puts "Checkboxes: #{selector.checkboxes.map { |e| "#{e.text} (#{e.checked ? "✓" : "☐"})" }.join(", ")}"
+            puts "Dialogs:    #{selector.dialogs.map { |e| "\"#{e.text}\" #{e.width}x#{e.height}" }.join(", ")}"
+            puts "Statusbars: #{selector.statusbars.map(&:text).join(", ")}"
+            puts "Progress:   #{selector.progress_bars.map(&:text).join(", ")}"
           elsif input.start_with?("key ")
             driver.send_keys(input.split(" ", 2).last.to_sym)
           else
