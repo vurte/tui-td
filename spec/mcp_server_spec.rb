@@ -46,6 +46,10 @@ RSpec.describe TUITD::MCP::Server do
         expect(tool_names).to include("tui_plain_text")
         expect(tool_names).to include("tui_screenshot")
         expect(tool_names).to include("tui_html_render")
+        expect(tool_names).to include("tui_wait_for_exit")
+        expect(tool_names).to include("tui_exit_status")
+        expect(tool_names).to include("tui_find_text")
+        expect(tool_names).to include("tui_find_elements")
         expect(tool_names).to include("tui_close")
       end
     end
@@ -292,6 +296,78 @@ RSpec.describe TUITD::MCP::Server do
         rescue StandardError
           nil
         end
+      end
+    end
+
+    describe "tui_find_text" do
+      it "finds text matching a pattern" do
+        server.send(:call_tui_start, { "command" => "echo 'hello world' && echo 'testing 123'" })
+        result = server.send(:call_tui_find_text, { "pattern" => "world" })
+        expect(result).to include("Found")
+        expect(result).to include("world")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "reports no matches" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_find_text, { "pattern" => "NONEXISTENT" })
+        expect(result).to include("No matches found")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_find_elements" do
+      it "detects buttons in terminal output" do
+        server.send(:call_tui_start, { "command" => "echo '[ OK ]  (Cancel)  <Submit>'" })
+        result = server.send(:call_tui_find_elements, { "role" => "button" })
+        expect(result).to include("Found")
+        expect(result).to include(":button")
+        expect(result).to include("OK")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "detects checkboxes in terminal output" do
+        server.send(:call_tui_start, { "command" => "echo '[x] Enable logging  [ ] Auto-save'" })
+        result = server.send(:call_tui_find_elements, { "role" => "checkbox" })
+        expect(result).to include(":checkbox")
+        expect(result).to include("Enable logging")
+        expect(result).to include("checked")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "filters elements by text" do
+        server.send(:call_tui_start, { "command" => "echo '[ OK ]  (Cancel)'" })
+        result = server.send(:call_tui_find_elements, { "text" => "Cancel" })
+        expect(result).to include(":button")
+        expect(result).to include("Cancel")
+        expect(result).not_to include("OK")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns all elements when no filter given" do
+        server.send(:call_tui_start, { "command" => "echo '[ OK ]'" })
+        result = server.send(:call_tui_find_elements, {})
+        expect(result).to include("Found")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "reports no elements when none match" do
+        server.send(:call_tui_start, { "command" => "echo 'just plain text'" })
+        result = server.send(:call_tui_find_elements, { "role" => "button" })
+        expect(result).to include("No elements found")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns error when used before tui_start" do
+        response = handle("tools/call", { "name" => "tui_find_elements", "arguments" => {} })
+        expect(response[:result][:content][0][:text]).to include("No TUI session active")
       end
     end
 

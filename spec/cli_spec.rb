@@ -122,6 +122,23 @@ RSpec.describe TUITD::CLI do
     end
   end
 
+  describe "drive mode" do
+    it "shows elements command in help" do
+      output = cli_run_capturing_stdout_and_exit(["--help"])
+      expect(output).to include("elements")
+    end
+
+    it "shows all interactive commands in help" do
+      output = cli_run_capturing_stdout_and_exit(["--help"])
+      expect(output).to include("state")
+      expect(output).to include("raw")
+      expect(output).to include("elements")
+      expect(output).to include("key <name>")
+      expect(output).to include("exitstatus")
+      expect(output).to include("exit")
+    end
+  end
+
   describe "global flags" do
     it "handles flags before command" do
       output = cli_run_capturing_stdout(["--timeout", "5", "capture", "echo", "ok"])
