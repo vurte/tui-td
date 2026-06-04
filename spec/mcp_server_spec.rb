@@ -50,6 +50,7 @@ RSpec.describe TUITD::MCP::Server do
         expect(tool_names).to include("tui_exit_status")
         expect(tool_names).to include("tui_find_text")
         expect(tool_names).to include("tui_find_elements")
+        expect(tool_names).to include("tui_element_actions")
         expect(tool_names).to include("tui_close")
       end
     end
@@ -367,6 +368,76 @@ RSpec.describe TUITD::MCP::Server do
 
       it "returns error when used before tui_start" do
         response = handle("tools/call", { "name" => "tui_find_elements", "arguments" => {} })
+        expect(response[:result][:content][0][:text]).to include("No TUI session active")
+      end
+
+      it "filters by checked state" do
+        server.send(:call_tui_start, { "command" => "echo '[x] OK  [ ] Cancel'" })
+        result = server.send(:call_tui_find_elements, { "role" => "checkbox", "checked" => true })
+        expect(result).to include("Found")
+        expect(result).to include("OK")
+        expect(result).to include("checked")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "detects new roles (input, label, menu, tab)" do
+        server.send(:call_tui_start, { "command" => "echo 'File  Edit  View'" })
+        result = server.send(:call_tui_find_elements, { "role" => "menu" })
+        expect(result).to include(":menu")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_find_text with match modes" do
+      it "supports exact match mode" do
+        server.send(:call_tui_start, { "command" => "echo hello" })
+        result = server.send(:call_tui_find_text, { "pattern" => "hello", "match" => "exact" })
+        expect(result).to include("Found")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "supports regex match mode" do
+        server.send(:call_tui_start, { "command" => "echo 'hello world'" })
+        result = server.send(:call_tui_find_text, { "pattern" => "[hw]+", "match" => "regex" })
+        expect(result).to include("Found")
+      ensure
+        server.send(:call_tui_close)
+      end
+    end
+
+    describe "tui_element_actions" do
+      it "returns action hashes for a button" do
+        server.send(:call_tui_start, { "command" => "echo '[ OK ]'" })
+        result = server.send(:call_tui_element_actions, { "role" => "button" })
+        expect(result).to include(":button")
+        expect(result).to include("click")
+        expect(result).to include("type")
+        expect(result).to include("press_key")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns error for missing role" do
+        server.send(:call_tui_start, { "command" => "echo test" })
+        result = server.send(:call_tui_element_actions, {})
+        expect(result).to include("ERROR")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "reports no element found" do
+        server.send(:call_tui_start, { "command" => "echo 'just text'" })
+        result = server.send(:call_tui_element_actions, { "role" => "button" })
+        expect(result).to include("No button")
+      ensure
+        server.send(:call_tui_close)
+      end
+
+      it "returns error when used before tui_start" do
+        response = handle("tools/call", { "name" => "tui_element_actions", "arguments" => { "role" => "button" } })
         expect(response[:result][:content][0][:text]).to include("No TUI session active")
       end
     end

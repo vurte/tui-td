@@ -272,7 +272,7 @@ module TUITD
               },
               {
                 name: "tui_find_text",
-                description: "Search for text or regex pattern in the current terminal state. Returns positions of all matches with surrounding context.",
+                description: "Search for text or regex pattern in the current terminal state. Returns positions of all matches with surrounding context. Supports match modes: partial (default, substring), exact (whole row), regex (Ruby regex).",
                 inputSchema: {
                   type: "object",
                   properties: {
@@ -280,25 +280,56 @@ module TUITD
                       type: "string",
                       description: "Text or regex pattern to search for (e.g., 'error', 'ERROR|FAIL')",
                     },
+                    match: {
+                      type: "string",
+                      enum: %w[partial exact regex],
+                      description: "Match mode: partial (substring), exact (whole row match), regex (Ruby regex). Default: partial.",
+                    },
                   },
                   required: ["pattern"],
                 },
               },
               {
                 name: "tui_find_elements",
-                description: "Search for UI elements in the terminal state. Returns buttons, checkboxes, dialogs, statusbars, and progress bars detected by heuristic analysis. Optionally filter by role and/or text.",
+                description: "Search for UI elements in the terminal state. Returns buttons, checkboxes, dialogs, statusbars, progress bars, inputs, labels, menus, and tabs detected by heuristic analysis. Optionally filter by role, text, checked, and/or disabled state.",
                 inputSchema: {
                   type: "object",
                   properties: {
                     role: {
                       type: "string",
-                      description: "Filter by role: button, checkbox, dialog, statusbar, progress. Omit to return all.",
+                      description: "Filter by role: button, checkbox, dialog, statusbar, progress, input, label, menu, tab. Omit to return all.",
+                    },
+                    text: {
+                      type: "string",
+                      description: "Filter by visible text (partial match). Optional.",
+                    },
+                    checked: {
+                      type: "boolean",
+                      description: "Filter by checked state (checkboxes). Optional.",
+                    },
+                    disabled: {
+                      type: "boolean",
+                      description: "Filter by disabled state. Optional.",
+                    },
+                  },
+                },
+              },
+              {
+                name: "tui_element_actions",
+                description: "Get action hashes for a detected UI element. Returns click/type/press_key actions that can be used to interact with the element via tui_send/tui_send_key.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    role: {
+                      type: "string",
+                      description: "Element role: button, checkbox, dialog, statusbar, progress, input, label, menu, tab",
                     },
                     text: {
                       type: "string",
                       description: "Filter by visible text (partial match). Optional.",
                     },
                   },
+                  required: ["role"],
                 },
               },
               {
@@ -333,6 +364,7 @@ module TUITD
                  when "tui_exit_status" then call_tui_exit_status
                  when "tui_find_text" then call_tui_find_text(args)
                  when "tui_find_elements" then call_tui_find_elements(args)
+                 when "tui_element_actions" then call_tui_element_actions(args)
                  when "tui_close" then call_tui_close
                  else
                    return error_response(id, -32_602, "Unknown tool: #{tool_name}")
@@ -492,8 +524,9 @@ module TUITD
       def call_tui_find_text(args)
         ensure_driver!
         pattern = args["pattern"] or return "ERROR: 'pattern' argument is required"
+        match_mode = (args["match"] || "partial").to_sym
         state = TUITD::State.new(@driver.state_data)
-        matches = state.find_text(pattern)
+        matches = state.find_text(pattern, match: match_mode)
 
         if matches.empty?
           "No matches found for: #{pattern}"
@@ -513,17 +546,29 @@ module TUITD
 
         role = args["role"]&.to_sym
         text = args["text"]
+        checked = args.key?("checked") ? args["checked"] : nil
+        disabled = args.key?("disabled") ? args["disabled"] : nil
+
+        filters = {}
+        filters[:text] = text if text
+        filters[:checked] = checked unless checked.nil?
+        filters[:disabled] = disabled unless disabled.nil?
 
         elements = if role
-                     selector.get_by_role(role)
+                     selector.get_by_role(role, **filters)
                    else
-                     selector.elements
+                     result = selector.elements
+                     result = result.select { |e| e.text&.include?(text) } if text
+                     result = result.select { |e| e.checked == checked } unless checked.nil?
+                     result = result.select { |e| e.disabled == disabled } unless disabled.nil?
+                     result
                    end
-        elements = elements.select { |e| e.text&.include?(text) } if text
 
         if elements.empty?
           desc = role ? "role :#{role}" : "any role"
           desc += " with text #{text.inspect}" if text
+          desc += " checked=#{checked}" unless checked.nil?
+          desc += " disabled=#{disabled}" unless disabled.nil?
           "No elements found for #{desc}"
         else
           lines = ["Found #{elements.size} element(s):"]
@@ -533,10 +578,40 @@ module TUITD
             parts << "at [#{el.row},#{el.col}]"
             parts << "#{el.width}x#{el.height}"
             parts << "(checked)" if el.checked
+            parts << "(disabled)" if el.disabled
+            parts << "(focused)" if el.focused
             lines << parts.join(" ")
           end
           lines.join("\n")
         end
+      end
+
+      def call_tui_element_actions(args)
+        ensure_driver!
+        role = args["role"]&.to_sym || (return "ERROR: 'role' argument is required")
+        text = args["text"]
+
+        state = TUITD::State.new(@driver.state_data)
+        selector = TUITD::Selector.new(state)
+
+        filters = {}
+        filters[:text] = text if text
+        element = selector.get_by_role(role, **filters).first
+
+        unless element
+          desc = "No #{role} element"
+          desc << " with text #{text.inspect}" if text
+          desc << " found"
+          return desc
+        end
+
+        lines = ["Element: :#{element.role} #{element.text.inspect} at [#{element.row},#{element.col}]"]
+        lines << "Bounds: #{element.bounds.inspect}"
+        lines << "Actions:"
+        lines << "  click:       #{element.click.inspect}"
+        lines << "  type(text):  #{element.type("text").inspect}"
+        lines << "  press_key:   #{element.press_key(:enter).inspect}"
+        lines.join("\n")
       end
 
       def call_tui_close
