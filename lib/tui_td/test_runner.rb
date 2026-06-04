@@ -170,11 +170,29 @@ module TUITD
                   check_role(driver, :dialog, nil)
 
                 when "assert_checkbox"
-                  check_role(driver, :checkbox, value.to_s, checked: step[:checked])
+                  check_role(driver, :checkbox, value.to_s, checked: step[:checked], disabled: step[:disabled])
 
                 when "assert_role"
                   role = step[:role]&.to_sym
-                  check_role(driver, role, value.to_s)
+                  check_role(driver, role, value.to_s, checked: step[:checked], disabled: step[:disabled])
+
+                when "assert_input"
+                  check_role(driver, :input, value == true ? nil : value.to_s)
+
+                when "assert_label"
+                  check_role(driver, :label, value == true ? nil : value.to_s)
+
+                when "assert_menu"
+                  check_role(driver, :menu, value == true ? nil : value.to_s)
+
+                when "assert_tab"
+                  check_role(driver, :tab, value == true ? nil : value.to_s)
+
+                when "assert_statusbar"
+                  check_role(driver, :statusbar, value == true ? nil : value.to_s)
+
+                when "assert_progress_bar"
+                  check_role(driver, :progress, value == true ? nil : value.to_s)
 
                 when "close"
                   driver&.close
@@ -224,21 +242,29 @@ module TUITD
 
     private
 
-    def check_role(driver, role, text, checked: nil)
+    def check_role(driver, role, text, checked: nil, disabled: nil)
       ensure_driver!(driver)
       state = State.new(driver.state_data)
       selector = Selector.new(state)
-      elements = selector.get_by_role(role)
-      elements = elements.select { |e| e.text&.include?(text.to_s) } if text
-      elements = elements.select { |e| e.checked == checked } unless checked.nil?
+
+      filters = {}
+      filters[:text] = text.to_s if text
+      filters[:checked] = checked unless checked.nil?
+      filters[:disabled] = disabled unless disabled.nil?
+      elements = selector.get_by_role(role, **filters)
 
       action = "assert_#{role}"
       if elements.any?
         count = elements.size
         desc = text ? "#{role} #{text.inspect}" : role.to_s
+        desc += " (checked)" if checked == true
+        desc += " (unchecked)" if checked == false
+        desc += " (disabled)" if disabled == true
         Result.new(step: action, passed: true, message: "Found #{count} #{desc} element(s)")
       else
         desc = text ? "#{role} with text #{text.inspect}" : role.to_s
+        desc += " (checked)" if checked == true
+        desc += " (disabled)" if disabled == true
         Result.new(step: action, passed: false, message: "No #{desc} found")
       end
     end

@@ -558,5 +558,101 @@ RSpec.describe TUITD::TestRunner do
       result = run_plan(plan)
       expect(result[:results][2][:passed]).to be true
     end
+
+    it "asserts input field" do
+      plan = {
+        name: "input test",
+        rows: 3,
+        cols: 30,
+        steps: [
+          { start: "printf '[________]'" },
+          { wait_for_stable: true },
+          { assert_input: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts label" do
+      plan = {
+        name: "label test",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "printf 'Username:'" },
+          { wait_for_stable: true },
+          { assert_label: "Username" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts menu bar" do
+      plan = {
+        name: "menu test",
+        rows: 3,
+        cols: 40,
+        steps: [
+          { start: "printf 'File    Edit    View'" },
+          { wait_for_stable: true },
+          { assert_menu: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts tabs" do
+      plan = {
+        name: "tab test",
+        rows: 3,
+        cols: 30,
+        steps: [
+          { start: "printf '[File] [Edit] [View]'" },
+          { wait_for_stable: true },
+          { assert_tab: "File" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts status bar" do
+      plan = {
+        name: "statusbar test",
+        rows: 5,
+        cols: 30,
+        steps: [
+          { start: "ruby -e 'print \"\\n\" * 4; print \"\\e[0;44mStatus: idle\\e[0m\"'" },
+          { wait_for_stable: true },
+          { assert_statusbar: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "asserts progress bar" do
+      plan = {
+        name: "progress test",
+        rows: 3,
+        cols: 30,
+        steps: [
+          { start: "printf '[##########         ] 50%%'" },
+          { wait_for_stable: true },
+          { assert_progress_bar: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
   end
 end
