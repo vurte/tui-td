@@ -286,7 +286,13 @@ tui-td test examples/echo_test.json
 | `assert_button` | `"text"` | Assert a button with given text is visible (`[ OK ]`, `(Cancel)`, `<Submit>`) |
 | `assert_dialog` | — | Assert a dialog (box-drawing region) is visible |
 | `assert_checkbox` | `"label", "checked": true` | Assert a checkbox with given label (and optionally checked state) |
-| `assert_role` | `":button", "text": "OK"` | Generic role assertion (`:button`, `:checkbox`, `:dialog`, `:statusbar`, `:progress`) |
+| `assert_role` | `":button", "text": "OK"` | Generic role assertion (`:button`, `:checkbox`, `:dialog`, `:statusbar`, `:progress`, `:input`, `:label`, `:menu`, `:tab`) |
+| `assert_input` | `"text"` (optional) | Assert an input field (`[____]`) is visible |
+| `assert_label` | `"text"` | Assert a label (text ending with colon) is visible |
+| `assert_menu` | `"text"` (optional) | Assert a menu bar or dropdown item is visible |
+| `assert_tab` | `"text"` | Assert a tab (`[Tab1]`) is visible |
+| `assert_statusbar` | — | Assert a status bar (bottom row with background) is visible |
+| `assert_progress_bar` | `"text"` (optional) | Assert a progress bar (`[####]`) is visible |
 | `close` | — | Close the TUI |
 
 Example with `html` step for before/after snapshots:
@@ -364,7 +370,13 @@ end
 | `have_button("OK")` | Assert a button with given text is visible |
 | `have_dialog` | Assert a dialog (box-drawing region) is visible |
 | `have_checkbox("Label").checked` | Assert a checkbox with given label (chain `.checked`) |
-| `have_role(:button, text: "OK")` | Generic role assertion with optional text filter |
+| `have_role(:button, text: "OK", checked: true, disabled: false)` | Generic role assertion with optional text, checked, disabled filters |
+| `have_input` | Assert an input field (`[____]`) is visible |
+| `have_label("Name")` | Assert a label (text ending with colon) is visible |
+| `have_menu` | Assert a menu bar or dropdown item is visible |
+| `have_tab("File")` | Assert a tab is visible |
+| `have_statusbar` | Assert a status bar (bottom row with background) is visible |
+| `have_progress_bar("50%")` | Assert a progress bar (`[####]`) is visible |
 | `have_exit_status(N)` | Assert the driver process exit status equals N |
 
 ## MCP Server — AI Integration

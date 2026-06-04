@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## 0.3.0
+
+### Added
+
+- Integration with tans-parser 0.1.2: new UI element roles (:input, :label, :menu, :tab)
+- Filter kwargs on get_by_role: text:, checked:, disabled:
+- Singular convenience methods: button(), checkbox(), input(), label(), menu(), tab(),
+  dialog(), statusbar(), progress_bar()
+- Element action methods: click, type(text), press_key(key)
+- Element predicates: checked?, disabled?
+- Element bounds accessor
+- disabled field on Element
+- ScopedSelector via Selector#within(element, &block) with full query API
+- State#find_text match modes: :partial (default), :exact, :regex
+- RSpec matchers: have_input, have_label, have_menu, have_tab, have_statusbar,
+  have_progress_bar
+- JSON test steps: assert_input, assert_label, assert_menu, assert_tab,
+  assert_statusbar, assert_progress_bar
+- MCP tool: tui_element_actions — returns click/type/press_key action hashes
+- Enhanced MCP tui_find_elements: checked/disabled filters, new roles, (disabled)/
+  (focused) output
+- Enhanced MCP tui_find_text: match: parameter for exact/regex mode
+- CLI drive mode: elements command now shows inputs, labels, menus, tabs
+- Updated help texts (tui-td help test, tui-td help rspec) with new steps and matchers
+
+### Changed
+
+- RSpec matchers (have_button, have_checkbox, have_role) now use tans-parser filter
+  kwargs instead of manual .select post-filtering
+- JSON test runner check_role helper uses tans-parser filter kwargs
+- have_checkbox now supports .unchecked chain
+
+### Removed
+
+- Custom coordinate-based Selector#within (replaced by tans-parser's element-based
+  within with ScopedSelector)
+
 ## 0.2.14
 
 ### Fixed
