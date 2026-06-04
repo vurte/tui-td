@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.2.14
+
+### Fixed
+
+- Tighten tans-parser dependency from `~> 0.1` to `~> 0.1.1` to ensure the required
+  Selector/Element classes are present (0.1.0 lacks them)
+
 ## 0.2.13
 
 ### Added
