@@ -202,6 +202,10 @@ module TUITD
             puts "Buttons:    #{selector.buttons.map { |e| "#{e.text}@[#{e.row},#{e.col}]" }.join(", ")}"
             puts "Checkboxes: #{selector.checkboxes.map { |e| "#{e.text} (#{e.checked ? "✓" : "☐"})" }.join(", ")}"
             puts "Dialogs:    #{selector.dialogs.map { |e| "\"#{e.text}\" #{e.width}x#{e.height}" }.join(", ")}"
+            puts "Inputs:     #{selector.inputs.map { |e| "[__]@[#{e.row},#{e.col}]" }.join(", ")}"
+            puts "Labels:     #{selector.labels.map(&:text).join(", ")}"
+            puts "Menus:      #{selector.menus.map(&:text).join(", ")}"
+            puts "Tabs:       #{selector.tabs.map { |e| "#{e.text}#{" (focused)" if e.focused}" }.join(", ")}"
             puts "Statusbars: #{selector.statusbars.map(&:text).join(", ")}"
             puts "Progress:   #{selector.progress_bars.map(&:text).join(", ")}"
           elsif input.start_with?("key ")
@@ -433,7 +437,27 @@ module TUITD
 
           {"assert_role": ":button", "text": "OK"}
               Generic role assertion. Accepts :button, :checkbox, :dialog,
-              :statusbar, :progress. Optional "text" filter.
+              :statusbar, :progress, :input, :label, :menu, :tab.
+              Optional "text", "checked", and "disabled" filters.
+
+          {"assert_input": true} or {"assert_input": "text"}
+              Assert that an input field ([____]) is visible. Optional text
+              filter to match adjacent label.
+
+          {"assert_label": "Name"}
+              Assert that a label (text ending with colon) is visible.
+
+          {"assert_menu": true} or {"assert_menu": "File | Edit"}
+              Assert that a menu bar or dropdown item is visible.
+
+          {"assert_tab": "File"}
+              Assert that a tab ([Tab1]) is visible.
+
+          {"assert_statusbar": true}
+              Assert that a status bar (bottom row with background) is visible.
+
+          {"assert_progress_bar": true} or {"assert_progress_bar": "50%"}
+              Assert that a progress bar ([####   ]) is visible.
 
         Example test file: examples/echo_test.json
       HELP
@@ -518,8 +542,34 @@ module TUITD
 
         have_role(:button, text: "OK")
             Generic role matcher. Accepts :button, :checkbox, :dialog,
-            :statusbar, :progress. Optional text: filter.
+            :statusbar, :progress, :input, :label, :menu, :tab.
+            Optional text:, checked:, disabled: filters.
             Usage: expect(state).to have_role(:statusbar)
+
+        have_input
+            Passes if an input field ([____]) is visible.
+            Usage: expect(state).to have_input
+            Usage: expect(state).to have_input("Name")
+
+        have_label("Name")
+            Passes if a label (text ending with colon) is visible.
+            Usage: expect(state).to have_label("Name")
+
+        have_menu
+            Passes if a menu bar or dropdown item is visible.
+            Usage: expect(state).to have_menu
+
+        have_tab("File")
+            Passes if a tab is visible.
+            Usage: expect(state).to have_tab("File")
+
+        have_statusbar
+            Passes if a status bar (bottom row with background) is visible.
+            Usage: expect(state).to have_statusbar
+
+        have_progress_bar
+            Passes if a progress bar ([####   ]) is visible.
+            Usage: expect(state).to have_progress_bar
 
         Driver matchers (work on TUITD::Driver, not State)
         --------------------------------------------------
