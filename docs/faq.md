@@ -81,6 +81,7 @@ Use the Selector to find the dialog, then scope queries inside it:
 state = TUITD::State.new(driver.state_data)
 selector = TUITD::Selector.new(state)
 dialog = selector.dialogs.first
-within_dialog = selector.within(dialog.row, dialog.col, dialog.width, dialog.height)
-expect(within_dialog.buttons.first.text).to eq("OK")
+selector.within(dialog) do |scope|
+  expect(scope.buttons.first.text).to eq("OK")
+end
 ```

@@ -402,8 +402,9 @@ tui-td serve
 | `tui_html_render` | Render terminal state as a self-contained HTML document. Returns HTML inline or saves to file. |
 | `tui_wait_for_exit` | Wait until the TUI process exits. Returns exit status. |
 | `tui_exit_status` | Get the exit status code (nil if still running). |
-| `tui_find_text` | Search for text or regex in terminal state. Returns positions of all matches. |
-| `tui_find_elements` | Detect UI elements (buttons, checkboxes, dialogs, etc.) with optional role/text filters. |
+| `tui_find_text` | Search for text or regex in terminal state. Supports match modes: `partial` (default), `exact`, `regex`. |
+| `tui_find_elements` | Detect UI elements (buttons, checkboxes, dialogs, inputs, labels, menus, tabs, etc.) with optional role, text, checked, and disabled filters. |
+| `tui_element_actions` | Get click/type/press_key action hashes for a detected UI element. For AI-driven interaction. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
@@ -453,10 +454,13 @@ Add to your MCP client configuration:
 // 9. Find UI elements by role
 {"method": "tools/call", "params": {"name": "tui_find_elements", "arguments": {"role": "button"}}}
 
-// 10. Check exit status (or wait for exit)
+// 10. Get actions for an element
+{"method": "tools/call", "params": {"name": "tui_element_actions", "arguments": {"role": "button", "text": "OK"}}}
+
+// 11. Check exit status (or wait for exit)
 {"method": "tools/call", "params": {"name": "tui_exit_status", "arguments": {}}}
 
-// 11. Clean up
+// 12. Clean up
 {"method": "tools/call", "params": {"name": "tui_close", "arguments": {}}}
 ```
 

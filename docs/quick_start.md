@@ -87,12 +87,18 @@ selector = TUITD::Selector.new(state)
 selector.buttons      # => [Element("OK"), Element("Cancel")]
 selector.checkboxes   # => [Element("Enable", checked: true)]
 selector.dialogs      # => [Element(dialog text)]
+selector.inputs       # => [Element(input field)]
+selector.labels       # => [Element("Username:"), Element("Password:")]
+selector.menus        # => [Element("File | Edit | View")]
+selector.tabs         # => [Element("File"), Element("Edit")]
 selector.statusbars   # => [Element(status text)]
+selector.progress_bars # => [Element("50%")]
 
 # Scoped queries inside a dialog
 dialog = selector.dialogs.first
-within_dialog = selector.within(dialog.row, dialog.col, dialog.width, dialog.height)
-within_dialog.buttons  # only buttons inside the dialog
+selector.within(dialog) do |scope|
+  scope.buttons  # only buttons inside the dialog
+end
 ```
 
 RSpec matchers for selectors:
@@ -101,6 +107,12 @@ RSpec matchers for selectors:
 expect(state).to have_button("OK")
 expect(state).to have_dialog
 expect(state).to have_checkbox("Enable").checked
+expect(state).to have_input
+expect(state).to have_label("Username")
+expect(state).to have_menu
+expect(state).to have_tab("File")
+expect(state).to have_statusbar
+expect(state).to have_progress_bar("50%")
 expect(state).to have_role(:button, text: "OK")
 ```
 
