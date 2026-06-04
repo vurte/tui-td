@@ -285,4 +285,167 @@ RSpec.describe TUITD::Matchers do
       driver&.close
     end
   end
+
+  describe "new role matchers" do
+    describe "have_input" do
+      it "passes when input field exists" do
+        grid = make_grid(3, 30)
+        "[________]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_input
+      end
+
+      it "passes with text filter (via find_text for adjacent label)" do
+        grid = make_grid(3, 30)
+        "Name: [________]".chars.each_with_index { |c, i| grid[1][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_input
+        expect(state).to have_label("Name")
+      end
+
+      it "fails when no input exists" do
+        state = make_state
+        expect { expect(state).to have_input }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_label" do
+      it "passes when label exists" do
+        grid = make_grid(3, 20)
+        "Username:".chars.each_with_index { |c, i| grid[1][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_label("Username")
+      end
+
+      it "fails when no label exists" do
+        state = make_state
+        expect { expect(state).to have_label("Name") }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_menu" do
+      it "passes when menu bar exists" do
+        grid = make_grid(3, 40)
+        "File    Edit    View    Help".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_menu
+      end
+
+      it "fails when no menu exists" do
+        state = make_state
+        expect { expect(state).to have_menu }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_tab" do
+      it "passes when tabs exist" do
+        grid = make_grid(3, 30)
+        "[File] [Edit] [View]".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_tab
+      end
+
+      it "passes with text filter" do
+        grid = make_grid(3, 30)
+        "[File] [Edit] [View]".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_tab("File")
+      end
+
+      it "fails when no tabs exist" do
+        state = make_state
+        expect { expect(state).to have_tab }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_statusbar" do
+      it "passes when statusbar exists" do
+        grid = make_grid(5, 20)
+        "Status: Ready".chars.each_with_index do |c, i|
+          grid[4][i][:char] = c
+          grid[4][i][:bg] = "blue"
+        end
+        state = make_state(grid: grid)
+        expect(state).to have_statusbar
+      end
+
+      it "fails when no statusbar exists" do
+        state = make_state
+        expect { expect(state).to have_statusbar }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_progress_bar" do
+      it "passes when progress bar exists" do
+        grid = make_grid(3, 30)
+        "[####     ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_progress_bar
+      end
+
+      it "fails when no progress bar exists" do
+        state = make_state
+        expect { expect(state).to have_progress_bar }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_checkbox with unchecked chain" do
+      it "passes when checkbox is unchecked" do
+        grid = make_grid(5, 30)
+        "[ ] Option".chars.each_with_index { |c, i| grid[2][i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_checkbox("Option").unchecked
+      end
+
+      it "fails when unchecked expected but checked" do
+        grid = make_grid(5, 30)
+        "[x] Option".chars.each_with_index { |c, i| grid[2][i][:char] = c }
+        state = make_state(grid: grid)
+        expect { expect(state).to have_checkbox("Option").unchecked }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+      end
+    end
+
+    describe "have_role with disabled filter" do
+      it "passes when checking a button role without optional filters" do
+        grid = make_grid(3, 30)
+        "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+        state = make_state(grid: grid)
+        expect(state).to have_role(:button, text: "OK")
+      end
+    end
+  end
+
+  describe "auto-wait for new role matchers" do
+    it "auto-waits on have_input when given a Driver" do
+      driver = TUITD::Driver.new("echo 'Name: [________]'", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_input
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_label when given a Driver" do
+      driver = TUITD::Driver.new("echo 'Username:'", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_label("Username")
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_menu when given a Driver" do
+      driver = TUITD::Driver.new("echo 'File    Edit    View'", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_menu
+    ensure
+      driver&.close
+    end
+
+    it "auto-waits on have_tab when given a Driver" do
+      driver = TUITD::Driver.new("echo '[Tab1] [Tab2]'", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      expect(driver).to have_tab("Tab1")
+    ensure
+      driver&.close
+    end
+  end
 end
