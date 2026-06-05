@@ -70,7 +70,9 @@ tool_names = tools.map { |t| t["name"] }
 expected_tools = %w[tui_start tui_send tui_state tui_close tui_screenshot
                     tui_send_key tui_wait_for_text tui_wait_for_stable
                     tui_plain_text tui_html_render tui_wait_for_exit
-                    tui_exit_status tui_find_text]
+                    tui_exit_status tui_find_text tui_find_elements
+                    tui_element_actions tui_diff tui_annotate_element
+                    tui_save_snapshot tui_assert_snapshot]
 tc = 0
 tc += 1 if assert("returns tool list", tools.length.positive?)
 expected_tools.each do |tname|
@@ -397,6 +399,118 @@ tc = 0
 tc += 1 if assert("find_text says no matches", no_match.include?("No match"))
 passed += tc
 tests += 1
+
+# =================================================================
+# New tools: tui_find_elements, tui_element_actions,
+# tui_diff, tui_annotate_element, tui_save_snapshot, tui_assert_snapshot
+# =================================================================
+
+# -- Test 26: tui_find_elements ---------------------------------------
+puts "\nTest 26: tui_find_elements"
+responses = simulate_server([
+                              %({"jsonrpc":"2.0","id":43,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo '[ OK ]  (Cancel)'"}}}),
+                              %({"jsonrpc":"2.0","id":44,"method":"tools/call","params":{"name":"tui_find_elements","arguments":{"role":"button"}}}),
+                            ])
+r26 = JSON.parse(responses[1], symbolize_names: true)
+el_text = r26.dig(:result, :content, 0, :text) || ""
+tc = 0
+tc += 1 if assert("find_elements finds buttons", el_text.include?(":button"))
+tc += 1 if assert("find_elements reports count", el_text.include?("Found"))
+passed += tc
+tests += 2
+
+# -- Test 27: tui_element_actions -------------------------------------
+puts "\nTest 27: tui_element_actions"
+responses = simulate_server([
+                              %({"jsonrpc":"2.0","id":45,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo '[ OK ]'"}}}),
+                              %({"jsonrpc":"2.0","id":46,"method":"tools/call","params":{"name":"tui_element_actions","arguments":{"role":"button"}}}),
+                            ])
+r27 = JSON.parse(responses[1], symbolize_names: true)
+act_text = r27.dig(:result, :content, 0, :text) || ""
+tc = 0
+tc += 1 if assert("element_actions returns button info", act_text.include?(":button"))
+tc += 1 if assert("element_actions shows click action", act_text.include?("click"))
+tc += 1 if assert("element_actions shows type action", act_text.include?("type"))
+tc += 1 if assert("element_actions shows press_key action", act_text.include?("press_key"))
+passed += tc
+tests += 4
+
+# -- Test 28: tui_diff (no differences) --------------------------------
+puts "\nTest 28: tui_diff (identical)"
+# Save a snapshot, then start a new session with the same command and diff
+simulate_server([
+                  %({"jsonrpc":"2.0","id":47,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo diff_test"}}}),
+                  %({"jsonrpc":"2.0","id":48,"method":"tools/call","params":{"name":"tui_save_snapshot","arguments":{"name":"diff_snap_#{Process.pid}"}}}),
+                  %({"jsonrpc":"2.0","id":49,"method":"tools/call","params":{"name":"tui_close","arguments":{}}}),
+                ])
+# Read the saved snapshot
+snap_file = "spec/snapshots/diff_snap_#{Process.pid}.json"
+tc = 0
+if File.exist?(snap_file)
+  snap_data = JSON.parse(File.read(snap_file))
+  server = TUITD::MCP::Server.new(rows: 10, cols: 40)
+  start_req = { "jsonrpc" => "2.0", "id" => 50, "method" => "tools/call",
+                "params" => { "name" => "tui_start", "arguments" => { "command" => "echo diff_test" } }, }
+  diff_req = { "jsonrpc" => "2.0", "id" => 51, "method" => "tools/call",
+               "params" => { "name" => "tui_diff", "arguments" => { "snapshot" => snap_data } }, }
+  server.send(:handle_request, start_req)
+  r28 = server.send(:handle_request, diff_req)
+  diff_text = r28.dig(:result, :content, 0, :text) || ""
+  tc += 1 if assert("diff finds no differences on identical", diff_text.include?("No difference"))
+  FileUtils.rm_f(snap_file)
+else
+  puts "  SKIP: snapshot file not found"
+end
+passed += tc
+tests += 1
+
+# -- Test 29: tui_annotate_element ------------------------------------
+puts "\nTest 29: tui_annotate_element"
+responses = simulate_server([
+                              %({"jsonrpc":"2.0","id":52,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo hello"}}}),
+                              %({"jsonrpc":"2.0","id":53,"method":"tools/call","params":{"name":"tui_annotate_element","arguments":{"role":"button","row":0,"col":0,"width":6,"height":1,"text":"OK"}}}),
+                            ])
+r29 = JSON.parse(responses[1], symbolize_names: true)
+ann_text = r29.dig(:result, :content, 0, :text) || ""
+tc = 0
+tc += 1 if assert("annotate_element returns OK", ann_text.start_with?("OK"))
+tc += 1 if assert("annotate_element includes role", ann_text.include?(":button"))
+tc += 1 if assert("annotate_element includes coordinates", ann_text.include?("[0,0]"))
+passed += tc
+tests += 3
+
+# -- Test 30: tui_save_snapshot ---------------------------------------
+puts "\nTest 30: tui_save_snapshot"
+responses = simulate_server([
+                              %({"jsonrpc":"2.0","id":54,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo snapshot_test"}}}),
+                              %({"jsonrpc":"2.0","id":55,"method":"tools/call","params":{"name":"tui_save_snapshot","arguments":{"name":"smoke_test_snap"}}}),
+                            ])
+r30 = JSON.parse(responses[1], symbolize_names: true)
+save_text = r30.dig(:result, :content, 0, :text) || ""
+tc = 0
+tc += 1 if assert("save_snapshot returns OK", save_text.start_with?("OK"))
+tc += 1 if assert("save_snapshot includes name", save_text.include?("smoke_test_snap"))
+passed += tc
+tests += 2
+
+# Cleanup
+FileUtils.rm_rf("spec/snapshots/smoke_test_snap.json")
+
+# -- Test 31: tui_assert_snapshot (first run creates) -----------------
+puts "\nTest 31: tui_assert_snapshot"
+responses = simulate_server([
+                              %({"jsonrpc":"2.0","id":56,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo assert_test"}}}),
+                              %({"jsonrpc":"2.0","id":57,"method":"tools/call","params":{"name":"tui_assert_snapshot","arguments":{"name":"smoke_assert_snap1"}}}),
+                            ])
+r31 = JSON.parse(responses[1], symbolize_names: true)
+assert_text = r31.dig(:result, :content, 0, :text) || ""
+tc = 0
+tc += 1 if assert("assert_snapshot creates on first run", assert_text.include?("created") || assert_text.include?("OK"))
+passed += tc
+tests += 1
+
+# Cleanup
+FileUtils.rm_rf("spec/snapshots/smoke_assert_snap1.json")
 
 # =================================================================
 # Summary

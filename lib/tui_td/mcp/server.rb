@@ -716,6 +716,7 @@ module TUITD
         chars_only = args["chars_only"] || false
 
         current = TUITD::State.new(@driver.state_data)
+        snapshot = deep_symbolize(snapshot) if snapshot.is_a?(Hash)
         diffs = current.diff(snapshot, chars_only: chars_only)
 
         if diffs.empty?
@@ -789,6 +790,17 @@ module TUITD
       end
 
       # --- Helpers ---
+
+      def deep_symbolize(obj)
+        case obj
+        when Hash
+          obj.each_with_object({}) { |(k, v), h| h[k.to_sym] = deep_symbolize(v) }
+        when Array
+          obj.map { |v| deep_symbolize(v) }
+        else
+          obj
+        end
+      end
 
       def safe_path(user_path, ext:)
         default = File.join("/tmp", "tui_td_#{Time.now.to_i}.#{ext}")
