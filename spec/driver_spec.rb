@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require "fileutils"
 require "spec_helper"
 
 RSpec.describe TUITD::Driver do
@@ -397,6 +398,50 @@ RSpec.describe TUITD::Driver do
     ensure
       driver&.close
       File.delete(path) if path && File.exist?(path)
+    end
+  end
+
+  describe "#find_text" do
+    it "finds text in terminal output" do
+      driver = described_class.new("echo hello world", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      results = driver.find_text("hello")
+      expect(results).to be_an(Array)
+      expect(results).not_to be_empty
+      expect(results.first[:text]).to eq("hello")
+    ensure
+      driver&.close
+    end
+
+    it "returns empty array when pattern not found" do
+      driver = described_class.new("echo test", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      results = driver.find_text("NONEXISTENT")
+      expect(results).to be_an(Array)
+      expect(results).to be_empty
+    ensure
+      driver&.close
+    end
+  end
+
+  describe "#snapshot" do
+    it "returns a TUITD::State object" do
+      driver = described_class.new("echo hello", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      snap = driver.snapshot
+      expect(snap).to be_a(TUITD::State)
+    ensure
+      driver&.close
+    end
+
+    it "produces identical snapshots for unchanged output" do
+      driver = described_class.new("echo hello", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      snap1 = driver.snapshot
+      snap2 = driver.snapshot
+      expect(snap1.diff(snap2)).to be_empty
+    ensure
+      driver&.close
     end
   end
 

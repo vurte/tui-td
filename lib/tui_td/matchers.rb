@@ -355,6 +355,33 @@ module TUITD
         expected ? "expected terminal NOT to have a progress bar #{expected.inspect}" : "expected terminal NOT to have a progress bar"
       end
     end
+
+    # Snapshot comparison matcher — works with both State and Driver (auto-wait).
+    # Compares current terminal state against a previously saved snapshot.
+    # Use chars_only: true to ignore color/style changes.
+    RSpec::Matchers.define :match_snapshot do |expected, chars_only: false|
+      match do |actual|
+        Matchers.auto_wait(actual) do |s|
+          s.diff(expected, chars_only: chars_only).empty?
+        end
+      end
+
+      description do
+        desc = "match snapshot"
+        desc << " (chars only)" if chars_only
+        desc
+      end
+      failure_message do |_actual|
+        desc = "expected terminal to match snapshot"
+        desc << " (chars only)" if chars_only
+        desc
+      end
+      failure_message_when_negated do |_actual|
+        desc = "expected terminal NOT to match snapshot"
+        desc << " (chars only)" if chars_only
+        desc
+      end
+    end
   end
 end
 # rubocop:enable Metrics/ModuleLength, Metrics/BlockLength, Layout/LineLength

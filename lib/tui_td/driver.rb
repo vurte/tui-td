@@ -211,6 +211,19 @@ module TUITD
       Screenshot.new(@state).render(output_path)
     end
 
+    # Search for text or regex pattern in the current terminal state.
+    # Delegates to TansParser::State#find_text.
+    # Supports match modes: :partial (default, substring), :exact, :regex.
+    def find_text(pattern, match: :partial)
+      TUITD::State.new(state_data).find_text(pattern, match: match)
+    end
+
+    # Return a snapshot of the current terminal state as a TUITD::State object.
+    # Can be compared later with match_snapshot or State#diff.
+    def snapshot
+      TUITD::State.new(state_data)
+    end
+
     # Close the driver and clean up
     def close
       _stop_reader_thread

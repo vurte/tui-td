@@ -448,4 +448,51 @@ RSpec.describe TUITD::Matchers do
       driver&.close
     end
   end
+
+  describe "match_snapshot" do
+    it "passes when states are identical" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+      snapshot = make_state(grid: grid, rows: 3)
+      expect(state).to match_snapshot(snapshot)
+    end
+
+    it "fails when states differ" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      diff_grid = make_grid(3, 20)
+      "World".chars.each_with_index { |c, i| diff_grid[1][5 + i][:char] = c }
+      snapshot = make_state(grid: diff_grid, rows: 3)
+
+      expect { expect(state).to match_snapshot(snapshot) }.to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "passes with chars_only when only styles differ" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      style_grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| style_grid[1][5 + i][:char] = c }
+      style_grid[1][5][:bold] = true
+      snapshot = make_state(grid: style_grid, rows: 3)
+
+      expect(state).to match_snapshot(snapshot, chars_only: true)
+    end
+
+    it "does negation with not_to" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      diff_grid = make_grid(3, 20)
+      "World".chars.each_with_index { |c, i| diff_grid[1][5 + i][:char] = c }
+      snapshot = make_state(grid: diff_grid, rows: 3)
+
+      expect(state).not_to match_snapshot(snapshot)
+    end
+  end
 end
