@@ -387,6 +387,44 @@ module TUITD
                 },
               },
               {
+                name: "tui_save_snapshot",
+                description: "Save the current terminal state as a named snapshot to disk. Used to create golden masters for snapshot testing.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    name: {
+                      type: "string",
+                      description: "Snapshot name (e.g., 'login_screen'). Saved as <name>.json in the snapshot directory.",
+                    },
+                    type: {
+                      type: "string",
+                      enum: %w[text full png html all],
+                      description: "Snapshot type. text=chars_only (default), full=chars+colors, png=screenshot, html=render, all=all formats.",
+                    },
+                  },
+                  required: ["name"],
+                },
+              },
+              {
+                name: "tui_assert_snapshot",
+                description: "Assert the current terminal state matches a named snapshot on disk. On first run, creates the snapshot automatically. Set UPDATE_SNAPSHOTS=1 to force update all snapshots.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    name: {
+                      type: "string",
+                      description: "Snapshot name to compare against.",
+                    },
+                    type: {
+                      type: "string",
+                      enum: %w[text full png html all],
+                      description: "Snapshot type. Default: text.",
+                    },
+                  },
+                  required: ["name"],
+                },
+              },
+              {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
@@ -421,6 +459,8 @@ module TUITD
                  when "tui_element_actions" then call_tui_element_actions(args)
                  when "tui_diff" then call_tui_diff(args)
                  when "tui_annotate_element" then call_tui_annotate_element(args)
+                 when "tui_save_snapshot" then call_tui_save_snapshot(args)
+                 when "tui_assert_snapshot" then call_tui_assert_snapshot(args)
                  when "tui_close" then call_tui_close
                  else
                    return error_response(id, -32_602, "Unknown tool: #{tool_name}")
@@ -707,6 +747,39 @@ module TUITD
         desc = "OK: Annotated :#{role} at [#{row},#{col}] #{width}x#{height}"
         desc << " with text #{text.inspect}" if text
         desc
+      end
+
+      def call_tui_save_snapshot(args)
+        ensure_driver!
+        name = args["name"] or return "ERROR: 'name' argument is required"
+        type = (args["type"] || "text").to_sym
+        snap = Snapshot.new(name, type: type)
+        snap.save(@driver.state_data)
+        "OK: Snapshot '#{name}' (type: #{type}) saved to #{snap.path}"
+      end
+
+      def call_tui_assert_snapshot(args)
+        ensure_driver!
+        name = args["name"] or return "ERROR: 'name' argument is required"
+        type = (args["type"] || "text").to_sym
+        snap = Snapshot.new(name, type: type)
+
+        if TUITD.configuration.update_snapshots?
+          snap.save(@driver.state_data)
+          return "OK: Snapshot '#{name}' (type: #{type}) updated (UPDATE_SNAPSHOTS mode)"
+        end
+
+        unless snap.exists?
+          snap.save(@driver.state_data)
+          return "OK: Snapshot '#{name}' (type: #{type}) created (first run)"
+        end
+
+        result = snap.compare(@driver.state_data)
+        if result.passed?
+          "OK: Snapshot '#{name}' (type: #{type}) matches"
+        else
+          "MISMATCH: #{result.message}"
+        end
       end
 
       def call_tui_close

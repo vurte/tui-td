@@ -2,6 +2,7 @@
 
 require "spec_helper"
 require "tui_td/matchers"
+require "tmpdir"
 
 RSpec.describe TUITD::Matchers do
   def make_grid(rows, cols)
@@ -493,6 +494,89 @@ RSpec.describe TUITD::Matchers do
       snapshot = make_state(grid: diff_grid, rows: 3)
 
       expect(state).not_to match_snapshot(snapshot)
+    end
+  end
+
+  describe "match_snapshot with named snapshots" do
+    let(:snapshot_dir) { Dir.mktmpdir("tui_td_named_snap") }
+
+    before { TUITD.configure { |c| c.snapshot_dir = snapshot_dir } }
+
+    after do
+      FileUtils.rm_rf(snapshot_dir)
+      TUITD.instance_variable_set(:@configuration, nil)
+    end
+
+    it "passes on first run (creates snapshot)" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      make_state(grid: grid, rows: 3)
+      snap_name = "first_run_#{Process.pid}"
+      snap = TUITD::Snapshot.new(snap_name, type: :text, snapshot_dir: snapshot_dir)
+
+      # Simulate: no snapshot exists yet
+      expect(snap.exists?).to be false
+    end
+
+    it "passes when named snapshot matches" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      snap = TUITD::Snapshot.new("greeting", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state)
+
+      expect(state).to match_snapshot("greeting", type: :text)
+    end
+
+    it "fails when named snapshot differs" do
+      grid = make_grid(3, 20)
+      "World".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      # Create snapshot with different content
+      snap = TUITD::Snapshot.new("diff_greet", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state)
+
+      # Now compare with "Hello" state
+      grid2 = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid2[1][5 + i][:char] = c }
+      state2 = make_state(grid: grid2, rows: 3)
+
+      expect { expect(state2).to match_snapshot("diff_greet", type: :text) }
+        .to raise_error(RSpec::Expectations::ExpectationNotMetError)
+    end
+
+    it "supports type: :full" do
+      grid = make_grid(1, 5)
+      grid[0][0][:char] = "A"
+      state = make_state(grid: grid, rows: 1)
+
+      snap = TUITD::Snapshot.new("full_test", type: :full, snapshot_dir: snapshot_dir)
+      snap.save(state)
+
+      expect(state).to match_snapshot("full_test", type: :full)
+    end
+
+    it "backward compatible: still works with State objects" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+      snapshot = make_state(grid: grid, rows: 3)
+      expect(state).to match_snapshot(snapshot)
+    end
+
+    it "backward compatible: still supports chars_only parameter" do
+      grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid, rows: 3)
+
+      style_grid = make_grid(3, 20)
+      "Hello".chars.each_with_index { |c, i| style_grid[1][5 + i][:char] = c }
+      style_grid[1][5][:bold] = true
+      snapshot = make_state(grid: style_grid, rows: 3)
+
+      expect(state).to match_snapshot(snapshot, chars_only: true)
     end
   end
 end

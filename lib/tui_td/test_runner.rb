@@ -194,6 +194,39 @@ module TUITD
                 when "assert_progress_bar"
                   check_role(driver, :progress, value == true ? nil : value.to_s)
 
+                when "snapshot"
+                  ensure_driver!(driver)
+                  driver.wait_for_stable if step[:wait] || step["wait"]
+                  snap_type = (step[:type] || step["type"] || :text).to_s.to_sym
+                  snap = Snapshot.new(value, type: snap_type)
+                  snap.save(driver.state_data)
+                  Result.new(step: action, passed: true,
+                             message: "Snapshot saved: #{value} (#{snap_type})",)
+
+                when "assert_snapshot"
+                  ensure_driver!(driver)
+                  driver.wait_for_stable if step[:wait] || step["wait"]
+                  snap_type = (step[:type] || step["type"] || :text).to_s.to_sym
+                  snap = Snapshot.new(value, type: snap_type)
+
+                  if TUITD.configuration.update_snapshots?
+                    snap.save(driver.state_data)
+                    Result.new(step: action, passed: true,
+                               message: "Snapshot updated: #{value} (#{snap_type})",)
+                  elsif !snap.exists?
+                    snap.save(driver.state_data)
+                    Result.new(step: action, passed: true,
+                               message: "Snapshot created: #{value} (#{snap_type})",)
+                  else
+                    result = snap.compare(driver.state_data)
+                    msg = if result.passed?
+                            "Snapshot matches: #{value}"
+                          else
+                            "Snapshot mismatch: #{value}\n#{result.message}"
+                          end
+                    Result.new(step: action, passed: result.passed?, message: msg)
+                  end
+
                 when "close"
                   driver&.close
                   driver = nil

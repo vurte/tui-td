@@ -1,0 +1,179 @@
+# frozen_string_literal: true
+
+require "spec_helper"
+require "fileutils"
+require "tmpdir"
+
+RSpec.describe TUITD::Snapshot do
+  let(:snapshot_dir) { Dir.mktmpdir("tui_td_snapshot") }
+  let(:state_data) do
+    {
+      size: { rows: 3, cols: 5 },
+      cursor: { row: 0, col: 0, visible: false },
+      rows: [
+        [
+          { char: "H", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          { char: "e", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          { char: "l", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          { char: "l", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+          { char: "o", fg: "default", bg: "default", bold: false, italic: false, underline: false },
+        ],
+        Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } },
+        Array.new(5) { { char: " ", fg: "default", bg: "default", bold: false, italic: false, underline: false } },
+      ],
+    }
+  end
+  let(:diff_state_data) do
+    data = Marshal.load(Marshal.dump(state_data))
+    data[:rows][0][0][:char] = "X"
+    data
+  end
+
+  after { FileUtils.rm_rf(snapshot_dir) }
+
+  describe "#new" do
+    it "defaults to :text type" do
+      snap = described_class.new("test", snapshot_dir: snapshot_dir)
+      expect(snap.type).to eq(:text)
+      expect(snap.name).to eq("test")
+    end
+
+    it "uses configured snapshot_dir when not given" do
+      TUITD.configure { |c| c.snapshot_dir = snapshot_dir }
+      snap = described_class.new("test")
+      expect(snap.snapshot_dir).to eq(snapshot_dir)
+    ensure
+      TUITD.instance_variable_set(:@configuration, nil)
+    end
+
+    it "defaults to spec/snapshots when unconfigured" do
+      TUITD.instance_variable_set(:@configuration, nil)
+      snap = described_class.new("test")
+      expect(snap.snapshot_dir).to eq("spec/snapshots")
+    end
+  end
+
+  describe "#save" do
+    it "saves .json for :text type" do
+      snap = described_class.new("s1", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      expect(File).to exist(snap.path(".json"))
+    end
+
+    it "saves valid JSON for :text" do
+      snap = described_class.new("json_test", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      parsed = JSON.parse(File.read(snap.path(".json")))
+      expect(parsed).to have_key("rows")
+      expect(parsed).to have_key("size")
+    end
+
+    it "saves .png for :png type" do
+      snap = described_class.new("s2", type: :png, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      expect(File).to exist(snap.path(".png"))
+      expect(File.size(snap.path(".png"))).to be > 0
+    end
+
+    it "saves .html for :html type" do
+      snap = described_class.new("s3", type: :html, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      expect(File).to exist(snap.path(".html"))
+      expect(File.read(snap.path(".html"))).to include("<!DOCTYPE html>")
+    end
+
+    it "saves all three for :all type" do
+      snap = described_class.new("s4", type: :all, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      expect(File).to exist(snap.path(".json"))
+      expect(File).to exist(snap.path(".png"))
+      expect(File).to exist(snap.path(".html"))
+    end
+
+    it "creates the snapshot directory if missing" do
+      deep_dir = File.join(snapshot_dir, "nested", "dir")
+      snap = described_class.new("test", snapshot_dir: deep_dir)
+      snap.save(state_data)
+      expect(Dir).to exist(deep_dir)
+      expect(File).to exist(File.join(deep_dir, "test.json"))
+    end
+  end
+
+  describe "#compare" do
+    it "passes when states are identical (:text)" do
+      snap = described_class.new("cmp", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      result = snap.compare(state_data)
+      expect(result).to be_passed
+      expect(result.diff_count).to eq(0)
+    end
+
+    it "fails when characters differ (:text)" do
+      snap = described_class.new("cmp2", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      result = snap.compare(diff_state_data)
+      expect(result).not_to be_passed
+      expect(result.diff_count).to be > 0
+    end
+
+    it "passes when only style differs (:text ignores styles)" do
+      snap = described_class.new("cmp3", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      style_data = Marshal.load(Marshal.dump(state_data))
+      style_data[:rows][0][0][:bold] = true
+      result = snap.compare(style_data)
+      expect(result).to be_passed
+    end
+
+    it "fails when colors differ (:full detects colors)" do
+      snap = described_class.new("cmp4", type: :full, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      colored = Marshal.load(Marshal.dump(state_data))
+      colored[:rows][0][0][:fg] = "red"
+      result = snap.compare(colored)
+      expect(result).not_to be_passed
+    end
+
+    it "handles missing snapshot file" do
+      snap = described_class.new("nonexistent", type: :text, snapshot_dir: snapshot_dir)
+      result = snap.compare(state_data)
+      expect(result).not_to be_passed
+      expect(result.message).to include("not found")
+    end
+
+    it "handles :png comparison" do
+      snap = described_class.new("png_cmp", type: :png, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      result = snap.compare(state_data)
+      expect(result).to be_passed
+    end
+
+    it "handles :html comparison" do
+      snap = described_class.new("html_cmp", type: :html, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      result = snap.compare(state_data)
+      expect(result).to be_passed
+    end
+
+    it "handles :all comparison" do
+      snap = described_class.new("all_cmp", type: :all, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      result = snap.compare(state_data)
+      expect(result).to be_passed
+    end
+  end
+
+  describe "#exists?" do
+    it "returns false before save, true after" do
+      snap = described_class.new("exist_test", type: :text, snapshot_dir: snapshot_dir)
+      expect(snap.exists?).to be false
+      snap.save(state_data)
+      expect(snap.exists?).to be true
+    end
+
+    it "returns false for missing snapshot" do
+      snap = described_class.new("missing", type: :text, snapshot_dir: snapshot_dir)
+      expect(snap.exists?).to be false
+    end
+  end
+end

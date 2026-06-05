@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "fileutils"
+require "tmpdir"
 require "spec_helper"
 require "tui_td/test_runner"
 
@@ -653,6 +655,81 @@ RSpec.describe TUITD::TestRunner do
       }
       result = run_plan(plan)
       expect(result[:results][2][:passed]).to be true
+    end
+  end
+
+  describe "snapshot steps" do
+    let(:snapshot_dir) { Dir.mktmpdir("tui_td_test_snap") }
+
+    before { TUITD.configure { |c| c.snapshot_dir = snapshot_dir } }
+
+    after do
+      FileUtils.rm_rf(snapshot_dir)
+      TUITD.instance_variable_set(:@configuration, nil)
+    end
+
+    it "snapshot step saves to disk" do
+      plan = {
+        name: "snapshot save test",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo hello" },
+          { wait_for_stable: true },
+          { snapshot: "test_snap1" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      expect(File).to exist(File.join(snapshot_dir, "test_snap1.json"))
+    end
+
+    it "assert_snapshot creates on first run" do
+      plan = {
+        name: "first run create",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo first_run" },
+          { wait_for_stable: true },
+          { assert_snapshot: "first_run_create" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      expect(File).to exist(File.join(snapshot_dir, "first_run_create.json"))
+    end
+
+    it "assert_snapshot matches saved snapshot" do
+      TUITD::Snapshot.new("match_test", type: :text, snapshot_dir: snapshot_dir)
+      plan = {
+        name: "save first",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo match_me" },
+          { wait_for_stable: true },
+          { snapshot: "match_test" },
+          { close: true },
+        ],
+      }
+      run_plan(plan)
+
+      plan2 = {
+        name: "assert match",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo match_me" },
+          { wait_for_stable: true },
+          { assert_snapshot: "match_test" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan2)
+      expect(result[:passed]).to be true
     end
   end
 end

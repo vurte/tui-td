@@ -41,8 +41,10 @@ module TUITD
         opts.separator "  state              Show terminal state as pretty JSON"
         opts.separator "  raw                Show raw ANSI output"
         opts.separator "  elements           Show detected UI elements (buttons, dialogs, etc.)"
-        opts.separator "  snapshot           Save current terminal state for later comparison"
-        opts.separator "  diff               Compare current state against saved snapshot"
+        opts.separator "  snapshot <name>    Save current state as named snapshot to disk"
+        opts.separator "  snapshot           Save current state in-memory (legacy)"
+        opts.separator "  diff <name>        Compare current state against named snapshot on disk"
+        opts.separator "  diff               Compare against in-memory snapshot (legacy)"
         opts.separator "  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,"
         opts.separator "                     backspace, ctrl_c, ctrl_d)"
         opts.separator "  <text>             Send text to the TUI"
@@ -210,9 +212,31 @@ module TUITD
             puts "Tabs:       #{selector.tabs.map { |e| "#{e.text}#{" (focused)" if e.focused}" }.join(", ")}"
             puts "Statusbars: #{selector.statusbars.map(&:text).join(", ")}"
             puts "Progress:   #{selector.progress_bars.map(&:text).join(", ")}"
+          elsif input.start_with?("snapshot ")
+            name = input.split(" ", 2).last.strip
+            unless name.empty?
+              snap = Snapshot.new(name)
+              snap.save(driver.state_data)
+              puts "Snapshot '#{name}' saved to #{snap.path}."
+            end
           elsif input == "snapshot"
             @last_snapshot = State.new(driver.state_data)
-            puts "Snapshot saved."
+            puts "In-memory snapshot saved."
+          elsif input.start_with?("diff ")
+            name = input.split(" ", 2).last.strip
+            unless name.empty?
+              snap = Snapshot.new(name)
+              unless snap.exists?
+                puts "No snapshot '#{name}' found at #{snap.path}."
+                next
+              end
+              result = snap.compare(driver.state_data)
+              if result.passed?
+                puts "No differences. Snapshot '#{name}' matches."
+              else
+                puts result.message
+              end
+            end
           elsif input == "diff"
             if @last_snapshot
               current = State.new(driver.state_data)
@@ -227,7 +251,7 @@ module TUITD
                 puts "  ..." if diffs.size > 10
               end
             else
-              puts "No snapshot saved. Use 'snapshot' first."
+              puts "No snapshot saved. Use 'snapshot <name>' or 'snapshot' first."
             end
           elsif input.start_with?("key ")
             driver.send_keys(input.split(" ", 2).last.to_sym)

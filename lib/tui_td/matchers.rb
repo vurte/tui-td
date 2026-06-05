@@ -357,29 +357,101 @@ module TUITD
     end
 
     # Snapshot comparison matcher — works with both State and Driver (auto-wait).
-    # Compares current terminal state against a previously saved snapshot.
-    # Use chars_only: true to ignore color/style changes.
-    RSpec::Matchers.define :match_snapshot do |expected, chars_only: false|
+    # Snapshot comparison matcher — supports both named (disk-based) and
+    # legacy in-memory State objects.
+    #
+    # Named snapshots (recommended):
+    #   expect(driver).to match_snapshot("login_screen")
+    #   expect(driver).to match_snapshot("login", type: :all, wait: true)
+    #
+    # First run creates the snapshot, subsequent runs compare.
+    # UPDATE_SNAPSHOTS=1 overwrites all snapshots.
+    #
+    # Legacy (backward compatible):
+    #   pre = driver.snapshot
+    #   expect(driver).to match_snapshot(pre, chars_only: true)
+    #
+    RSpec::Matchers.define :match_snapshot do |ref, type: nil, wait: false, chars_only: nil, ignore_rows: nil|
       match do |actual|
-        Matchers.auto_wait(actual) do |s|
-          s.diff(expected, chars_only: chars_only).empty?
+        # Normalize type: backward compat for chars_only parameter
+        effective_type = type
+        if effective_type.nil? && !chars_only.nil?
+          effective_type = chars_only ? :text : :full
+        end
+        effective_type ||= :text
+
+        @snapshot_name = nil
+        @diff_result = nil
+
+        # Legacy path: snapshot_ref is a State object (responds to diff)
+        if ref.respond_to?(:diff)
+          Matchers.auto_wait(actual) do |s|
+            chars = effective_type == :text
+            diffs = ref.diff(s, chars_only: chars)
+            diffs.reject! { |d| Array(ignore_rows).include?(d[:row]) } if ignore_rows
+            @diff_result = diffs
+            @diff_result.empty?
+          end
+        else
+          # Named snapshot path
+          @snapshot_name = ref.to_s
+          snap = Snapshot.new(@snapshot_name, type: effective_type)
+
+          # Get state_data from actual
+          if wait && actual.respond_to?(:wait_for_stable)
+            begin
+              actual.wait_for_stable
+            rescue StandardError
+              nil
+            end
+          end
+          state_data = if actual.respond_to?(:state_data)
+                         actual.state_data
+                       elsif actual.respond_to?(:to_h)
+                         actual.to_h
+                       else
+                         actual
+                       end
+
+          if TUITD.configuration.update_snapshots?
+            snap.save(state_data)
+            true
+          elsif !snap.exists?
+            snap.save(state_data)
+            @diff_result = TUITD::Snapshot::ComparisonResult.new(passed: true, diff_count: 0, type: effective_type,
+                                                                 message: "Snapshot '#{@snapshot_name}' created (#{effective_type})",)
+            true
+          else
+            @diff_result = snap.compare(state_data, ignore_rows: ignore_rows)
+            @diff_result.passed?
+          end
         end
       end
 
       description do
-        desc = "match snapshot"
-        desc << " (chars only)" if chars_only
-        desc
+        if @snapshot_name
+          "match snapshot #{@snapshot_name.inspect} (type: #{effective_type})"
+        else
+          desc = "match snapshot"
+          desc << " (chars only)" if effective_type == :text
+          desc
+        end
       end
+
       failure_message do |_actual|
-        desc = "expected terminal to match snapshot"
-        desc << " (chars only)" if chars_only
-        desc
+        if @snapshot_name
+          "Snapshot #{@snapshot_name.inspect} does not match.\n#{@diff_result&.message}"
+        else
+          "expected terminal to match snapshot"
+        end
       end
+
       failure_message_when_negated do |_actual|
-        desc = "expected terminal NOT to match snapshot"
-        desc << " (chars only)" if chars_only
-        desc
+        if @snapshot_name
+          "expected snapshot #{@snapshot_name.inspect} NOT to match, but it did."
+        else
+          "expected terminal NOT to match snapshot, but it did."
+        end
       end
     end
   end

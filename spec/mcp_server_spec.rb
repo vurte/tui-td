@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "fileutils"
+require "tmpdir"
 require "spec_helper"
 
 RSpec.describe TUITD::MCP::Server do
@@ -53,6 +54,8 @@ RSpec.describe TUITD::MCP::Server do
         expect(tool_names).to include("tui_element_actions")
         expect(tool_names).to include("tui_diff")
         expect(tool_names).to include("tui_annotate_element")
+        expect(tool_names).to include("tui_save_snapshot")
+        expect(tool_names).to include("tui_assert_snapshot")
         expect(tool_names).to include("tui_close")
       end
     end
@@ -512,6 +515,79 @@ RSpec.describe TUITD::MCP::Server do
       server.send(:call_tui_start, { "command" => "echo test" })
       result = server.send(:call_tui_annotate_element, {})
       expect(result).to include("ERROR")
+    ensure
+      server.send(:call_tui_close)
+    end
+  end
+
+  describe "tui_save_snapshot" do
+    let(:snapshot_dir) { Dir.mktmpdir("tui_td_mcp_snap") }
+
+    before { TUITD.configure { |c| c.snapshot_dir = snapshot_dir } }
+
+    after do
+      FileUtils.rm_rf(snapshot_dir)
+      TUITD.instance_variable_set(:@configuration, nil)
+    end
+
+    it "saves a snapshot to disk" do
+      server.send(:call_tui_start, { "command" => "echo hello" })
+      result = server.send(:call_tui_save_snapshot, { "name" => "mcp_save_test" })
+      expect(result).to include("OK: Snapshot")
+      expect(result).to include("mcp_save_test")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "returns error when name is missing" do
+      server.send(:call_tui_start, { "command" => "echo test" })
+      result = server.send(:call_tui_save_snapshot, {})
+      expect(result).to include("ERROR")
+    ensure
+      server.send(:call_tui_close)
+    end
+  end
+
+  describe "tui_assert_snapshot" do
+    let(:snapshot_dir) { Dir.mktmpdir("tui_td_mcp_assert") }
+
+    before { TUITD.configure { |c| c.snapshot_dir = snapshot_dir } }
+
+    after do
+      FileUtils.rm_rf(snapshot_dir)
+      TUITD.instance_variable_set(:@configuration, nil)
+    end
+
+    it "creates snapshot on first call" do
+      server.send(:call_tui_start, { "command" => "echo first_assert" })
+      result = server.send(:call_tui_assert_snapshot, { "name" => "mcp_assert1" })
+      expect(result).to include("created")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "passes on matching output" do
+      server.send(:call_tui_start, { "command" => "echo match_me" })
+      snap = TUITD::Snapshot.new("mcp_assert_match", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(server.instance_variable_get(:@driver).state_data)
+      server.send(:call_tui_close)
+
+      server.send(:call_tui_start, { "command" => "echo match_me" })
+      result = server.send(:call_tui_assert_snapshot, { "name" => "mcp_assert_match" })
+      expect(result).to include("matches")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "reports mismatch" do
+      server.send(:call_tui_start, { "command" => "echo baseline" })
+      snap = TUITD::Snapshot.new("mcp_assert_mismatch", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(server.instance_variable_get(:@driver).state_data)
+      server.send(:call_tui_close)
+
+      server.send(:call_tui_start, { "command" => "echo different" })
+      result = server.send(:call_tui_assert_snapshot, { "name" => "mcp_assert_mismatch" })
+      expect(result).to include("MISMATCH")
     ensure
       server.send(:call_tui_close)
     end
