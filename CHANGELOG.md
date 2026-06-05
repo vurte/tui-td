@@ -1,5 +1,24 @@
 # CHANGELOG
 
+## 0.2.16
+
+### Added
+
+- Driver#find_text: convenience delegation to State#find_text with match: modes
+- Driver#snapshot: return a State snapshot for later diff comparison
+- match_snapshot RSpec matcher: compare current state against saved snapshot,
+  supports chars_only: true to ignore color/style changes
+- MCP tui_diff tool: compare current terminal state against a previous snapshot,
+  returns cell-level differences
+- MCP tui_annotate_element tool: manually register UI element annotations that
+  are picked up by tui_find_elements
+- Drive mode: snapshot and diff commands for interactive state comparison
+
+### Changed
+
+- Tighten tans-parser dependency to ~> 0.1.3 (includes State#diff,
+  State#annotate_role, improved dialog/statusbar detection)
+
 ## 0.2.15
 
 ### Added

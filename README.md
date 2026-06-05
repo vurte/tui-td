@@ -405,6 +405,8 @@ tui-td serve
 | `tui_find_text` | Search for text or regex in terminal state. Supports match modes: `partial` (default), `exact`, `regex`. |
 | `tui_find_elements` | Detect UI elements (buttons, checkboxes, dialogs, inputs, labels, menus, tabs, etc.) with optional role, text, checked, and disabled filters. |
 | `tui_element_actions` | Get click/type/press_key action hashes for a detected UI element. For AI-driven interaction. |
+| `tui_diff` | Compare current state against a previous snapshot. Returns cell-level differences. |
+| `tui_annotate_element` | Manually register a UI element annotation. Picked up by tui_find_elements. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
