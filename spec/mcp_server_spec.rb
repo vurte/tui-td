@@ -51,6 +51,8 @@ RSpec.describe TUITD::MCP::Server do
         expect(tool_names).to include("tui_find_text")
         expect(tool_names).to include("tui_find_elements")
         expect(tool_names).to include("tui_element_actions")
+        expect(tool_names).to include("tui_diff")
+        expect(tool_names).to include("tui_annotate_element")
         expect(tool_names).to include("tui_close")
       end
     end
@@ -463,6 +465,55 @@ RSpec.describe TUITD::MCP::Server do
       expect(response[:id]).to eq(1)
       expect(response[:error][:code]).to eq(-32_600)
       expect(response[:error][:message]).to eq("Invalid Request")
+    end
+  end
+
+  describe "tui_diff" do
+    it "finds no differences for identical output" do
+      server.send(:call_tui_start, { "command" => "echo hello" })
+      snap = server.instance_variable_get(:@driver).state_data
+      result = server.send(:call_tui_diff, { "snapshot" => snap })
+      expect(result).to include("No differences")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "finds differences for changed output" do
+      server.send(:call_tui_start, { "command" => "echo hello" })
+      snap = server.instance_variable_get(:@driver).state_data
+      server.send(:call_tui_close)
+
+      server.send(:call_tui_start, { "command" => "echo world" })
+      result = server.send(:call_tui_diff, { "snapshot" => snap })
+      expect(result).to include("difference")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "returns error when used before tui_start" do
+      response = handle("tools/call", { "name" => "tui_diff", "arguments" => { "snapshot" => {} } })
+      expect(response[:result][:content][0][:text]).to include("No TUI session active")
+    end
+  end
+
+  describe "tui_annotate_element" do
+    it "annotates a region and shows in find_elements" do
+      server.send(:call_tui_start, { "command" => "echo hello" })
+      server.send(:call_tui_annotate_element,
+                  { "role" => "button", "row" => 0, "col" => 0, "width" => 6, "height" => 1, "text" => "OK" })
+      result = server.send(:call_tui_find_elements, { "role" => "button", "text" => "OK" })
+      expect(result).to include(":button")
+      expect(result).to include("OK")
+    ensure
+      server.send(:call_tui_close)
+    end
+
+    it "returns error when arguments missing" do
+      server.send(:call_tui_start, { "command" => "echo test" })
+      result = server.send(:call_tui_annotate_element, {})
+      expect(result).to include("ERROR")
+    ensure
+      server.send(:call_tui_close)
     end
   end
 

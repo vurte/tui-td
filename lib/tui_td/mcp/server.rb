@@ -333,6 +333,60 @@ module TUITD
                 },
               },
               {
+                name: "tui_diff",
+                description: "Compare the current terminal state against a previous state. Returns cell-level differences. Use chars_only: true to ignore color/style changes.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    snapshot: {
+                      type: "object",
+                      description: "A previously saved state snapshot (from tui_state or a prior capture). Must include size, cursor, and rows keys.",
+                    },
+                    chars_only: {
+                      type: "boolean",
+                      description: "If true, only compare character differences (ignore color/style). Default: false.",
+                    },
+                  },
+                  required: ["snapshot"],
+                },
+              },
+              {
+                name: "tui_annotate_element",
+                description: "Manually register a UI element at a specific region. The annotation is picked up by tui_find_elements for subsequent queries.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    role: {
+                      type: "string",
+                      description: "Element role (e.g., button, dialog, statusbar, progress, input, label, menu, tab).",
+                    },
+                    row: {
+                      type: "integer",
+                      description: "Top row of the element.",
+                    },
+                    col: {
+                      type: "integer",
+                      description: "Left column of the element.",
+                    },
+                    width: {
+                      type: "integer",
+                      description: "Width in columns (default: 1).",
+                      default: 1,
+                    },
+                    height: {
+                      type: "integer",
+                      description: "Height in rows (default: 1).",
+                      default: 1,
+                    },
+                    text: {
+                      type: "string",
+                      description: "Visible text label for the element.",
+                    },
+                  },
+                  required: %w[role row col],
+                },
+              },
+              {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
@@ -365,6 +419,8 @@ module TUITD
                  when "tui_find_text" then call_tui_find_text(args)
                  when "tui_find_elements" then call_tui_find_elements(args)
                  when "tui_element_actions" then call_tui_element_actions(args)
+                 when "tui_diff" then call_tui_diff(args)
+                 when "tui_annotate_element" then call_tui_annotate_element(args)
                  when "tui_close" then call_tui_close
                  else
                    return error_response(id, -32_602, "Unknown tool: #{tool_name}")
@@ -612,6 +668,45 @@ module TUITD
         lines << "  type(text):  #{element.type("text").inspect}"
         lines << "  press_key:   #{element.press_key(:enter).inspect}"
         lines.join("\n")
+      end
+
+      def call_tui_diff(args)
+        ensure_driver!
+        snapshot = args["snapshot"] or return "ERROR: 'snapshot' argument is required"
+        chars_only = args["chars_only"] || false
+
+        current = TUITD::State.new(@driver.state_data)
+        diffs = current.diff(snapshot, chars_only: chars_only)
+
+        if diffs.empty?
+          "No differences found (chars_only: #{chars_only})"
+        else
+          lines = ["Found #{diffs.size} difference(s):"]
+          diffs.first(20).each do |d|
+            before_char = d[:before][:char].inspect
+            after_char = d[:after][:char].inspect
+            lines << "  [#{d[:row]},#{d[:col]}] #{before_char} -> #{after_char}"
+          end
+          lines << "  ... (truncated)" if diffs.size > 20
+          lines.join("\n")
+        end
+      end
+
+      def call_tui_annotate_element(args)
+        ensure_driver!
+        role = args["role"] or return "ERROR: 'role' argument is required"
+        row = args["row"] or return "ERROR: 'row' argument is required"
+        col = args["col"] or return "ERROR: 'col' argument is required"
+        width = args["width"] || 1
+        height = args["height"] || 1
+        text = args["text"]
+
+        state = TUITD::State.new(@driver.state_data)
+        state.annotate_role(role, row: row, col: col, width: width, height: height, text: text)
+
+        desc = "OK: Annotated :#{role} at [#{row},#{col}] #{width}x#{height}"
+        desc << " with text #{text.inspect}" if text
+        desc
       end
 
       def call_tui_close

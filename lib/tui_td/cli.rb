@@ -41,6 +41,8 @@ module TUITD
         opts.separator "  state              Show terminal state as pretty JSON"
         opts.separator "  raw                Show raw ANSI output"
         opts.separator "  elements           Show detected UI elements (buttons, dialogs, etc.)"
+        opts.separator "  snapshot           Save current terminal state for later comparison"
+        opts.separator "  diff               Compare current state against saved snapshot"
         opts.separator "  key <name>         Send keystroke (enter, tab, escape, up, down, left, right,"
         opts.separator "                     backspace, ctrl_c, ctrl_d)"
         opts.separator "  <text>             Send text to the TUI"
@@ -208,6 +210,25 @@ module TUITD
             puts "Tabs:       #{selector.tabs.map { |e| "#{e.text}#{" (focused)" if e.focused}" }.join(", ")}"
             puts "Statusbars: #{selector.statusbars.map(&:text).join(", ")}"
             puts "Progress:   #{selector.progress_bars.map(&:text).join(", ")}"
+          elsif input == "snapshot"
+            @last_snapshot = State.new(driver.state_data)
+            puts "Snapshot saved."
+          elsif input == "diff"
+            if @last_snapshot
+              current = State.new(driver.state_data)
+              diffs = current.diff(@last_snapshot)
+              if diffs.empty?
+                puts "No differences."
+              else
+                puts "#{diffs.size} difference(s):"
+                diffs.first(10).each do |d|
+                  puts "  [#{d[:row]},#{d[:col]}] #{d[:before][:char].inspect} -> #{d[:after][:char].inspect}"
+                end
+                puts "  ..." if diffs.size > 10
+              end
+            else
+              puts "No snapshot saved. Use 'snapshot' first."
+            end
           elsif input.start_with?("key ")
             driver.send_keys(input.split(" ", 2).last.to_sym)
           else
@@ -570,6 +591,12 @@ module TUITD
         have_progress_bar
             Passes if a progress bar ([####   ]) is visible.
             Usage: expect(state).to have_progress_bar
+
+        match_snapshot(snapshot, chars_only: false)
+            Passes if the current state matches a previously saved snapshot.
+            Use chars_only: true to ignore color/style changes.
+            Usage: pre = driver.snapshot; ... ; expect(driver).to match_snapshot(pre)
+            Usage: expect(state).to match_snapshot(snap, chars_only: true)
 
         Driver matchers (work on TUITD::Driver, not State)
         --------------------------------------------------
