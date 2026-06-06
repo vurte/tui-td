@@ -161,6 +161,29 @@ RSpec.describe TUITD::Snapshot do
       result = snap.compare(state_data)
       expect(result).to be_passed
     end
+
+    it "respects region: filtering (only compares rows in region)" do
+      snap = described_class.new("region1", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      # Modify a row outside the region and inside the region
+      modified = Marshal.load(Marshal.dump(state_data))
+      modified[:rows][0][0][:char] = "Z" # inside region (row 0)
+      modified[:rows][2][0][:char] = "Y" # outside region (row 2)
+      result = snap.compare(modified, region: 0..1)
+      expect(result).not_to be_passed
+      expect(result.diff_count).to eq(1) # only row 0 diff, row 2 ignored
+    end
+
+    it "combines region: and ignore_rows:" do
+      snap = described_class.new("region2", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      modified = Marshal.load(Marshal.dump(state_data))
+      modified[:rows][0][0][:char] = "Z" # inside region row 0, but ignored
+      modified[:rows][1][0][:char] = "Y" # inside region row 1, not ignored
+      result = snap.compare(modified, region: 0..2, ignore_rows: [0])
+      expect(result).not_to be_passed
+      expect(result.diff_count).to eq(1) # only row 1
+    end
   end
 
   describe "#exists?" do

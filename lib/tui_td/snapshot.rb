@@ -77,15 +77,15 @@ module TUITD
 
     # Compare current terminal state against the saved snapshot.
     # Returns ComparisonResult.
-    def compare(state_data, ignore_rows: nil)
+    def compare(state_data, ignore_rows: nil, region: nil)
       if @type == :all
-        compare_all(state_data, ignore_rows: ignore_rows)
+        compare_all(state_data, ignore_rows: ignore_rows, region: region)
       elsif png?
         compare_png(state_data)
       elsif html?
         compare_html(state_data)
       else
-        compare_json(state_data, chars_only: @type == :text, ignore_rows: ignore_rows)
+        compare_json(state_data, chars_only: @type == :text, ignore_rows: ignore_rows, region: region)
       end
     end
 
@@ -126,7 +126,7 @@ module TUITD
       @type == :html
     end
 
-    def compare_json(state_data, chars_only:, ignore_rows: nil)
+    def compare_json(state_data, chars_only:, ignore_rows: nil, region: nil)
       file = path(".json")
       return missing_file_result(file) unless File.exist?(file)
 
@@ -143,7 +143,11 @@ module TUITD
       saved_state = TUITD::State.new(saved)
       diffs = current.diff(saved_state, chars_only: chars_only)
 
-      # Filter out ignored rows
+      # Restrict to specified region first, then remove ignored rows
+      if region
+        region = Array(region)
+        diffs.select! { |d| region.include?(d[:row]) }
+      end
       if ignore_rows
         ignored = Array(ignore_rows)
         diffs.reject! { |d| ignored.include?(d[:row]) }
@@ -216,9 +220,9 @@ module TUITD
       end
     end
 
-    def compare_all(state_data, ignore_rows: nil)
+    def compare_all(state_data, ignore_rows: nil, region: nil)
       results = []
-      results << compare_json(state_data, chars_only: true, ignore_rows: ignore_rows)
+      results << compare_json(state_data, chars_only: true, ignore_rows: ignore_rows, region: region)
       results << compare_png(state_data)
       results << compare_html(state_data)
 

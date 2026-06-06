@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ModuleLength, Metrics/BlockLength, Layout/LineLength
+# rubocop:disable Metrics/ModuleLength, Metrics/BlockLength, Metrics/ParameterLists, Layout/LineLength
 
 require "rspec/expectations"
 
@@ -371,7 +371,7 @@ module TUITD
     #   pre = driver.snapshot
     #   expect(driver).to match_snapshot(pre, chars_only: true)
     #
-    RSpec::Matchers.define :match_snapshot do |ref, type: nil, wait: false, chars_only: nil, ignore_rows: nil|
+    RSpec::Matchers.define :match_snapshot do |ref, type: nil, wait: false, chars_only: nil, ignore_rows: nil, region: nil|
       match do |actual|
         # Normalize type: backward compat for chars_only parameter
         effective_type = type
@@ -388,6 +388,7 @@ module TUITD
           Matchers.auto_wait(actual) do |s|
             chars = effective_type == :text
             diffs = ref.diff(s, chars_only: chars)
+            diffs.select! { |d| Array(region).include?(d[:row]) } if region
             diffs.reject! { |d| Array(ignore_rows).include?(d[:row]) } if ignore_rows
             @diff_result = diffs
             @diff_result.empty?
@@ -422,7 +423,7 @@ module TUITD
                                                                  message: "Snapshot '#{@snapshot_name}' created (#{effective_type})",)
             true
           else
-            @diff_result = snap.compare(state_data, ignore_rows: ignore_rows)
+            @diff_result = snap.compare(state_data, ignore_rows: ignore_rows, region: region)
             @diff_result.passed?
           end
         end
@@ -456,4 +457,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/ModuleLength, Metrics/BlockLength, Layout/LineLength
+# rubocop:enable Metrics/ModuleLength, Metrics/BlockLength, Metrics/ParameterLists, Layout/LineLength
