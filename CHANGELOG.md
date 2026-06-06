@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## 0.2.17
+
+### Added
+
+- Named snapshot testing: `match_snapshot("name")` — first run creates golden master,
+  subsequent runs compare. Supports `type: :text` (chars_only), `:full`, `:png`, `:html`, `:all`.
+- `ignore_rows:` parameter — skip specific rows during snapshot comparison
+- `region:` parameter — restrict comparison to a row range (e.g., `region: 0..6`)
+  Combinable with `ignore_rows:` for fine-grained control.
+- `UPDATE_SNAPSHOTS=1` — environment variable to auto-update all snapshots
+- `TUITD.configure { |c| c.snapshot_dir = "..." }` — configurable snapshot directory
+- `Driver#find_text(pattern, match:)` — convenience delegation to State#find_text
+- `Driver#snapshot` — returns a State snapshot for in-memory comparison
+- JSON test steps: `snapshot`, `assert_snapshot` with `type:` and `wait:` options
+- MCP tools: `tui_save_snapshot`, `tui_assert_snapshot`, `tui_element_actions`,
+  `tui_annotate_element`, `tui_diff`
+- Drive mode: `snapshot <name>`, `diff <name>` commands
+- `TUITD::Snapshot` class — core abstraction for save/load/compare of named snapshots
+- `TUITD::Configuration` class — global gem configuration
+
+### Changed
+
+- `match_snapshot` matcher: now accepts String names (named snapshots) in addition to
+  legacy State objects. New kwargs: `type:`, `wait:`, `ignore_rows:`, `region:`.
+- `tui_find_text` MCP tool: added `match:` parameter (`partial`, `exact`, `regex`)
+- `tui_find_elements` MCP tool: added `checked:`/`disabled:` filters, new roles
+- `tui_diff` MCP tool: fixed deep key symbolization for snapshot hash compatibility
+- Dependency: tans-parser `~> 0.1.3`
+
 ## 0.2.16
 
 ### Added

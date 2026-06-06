@@ -504,6 +504,15 @@ module TUITD
           {"assert_progress_bar": true} or {"assert_progress_bar": "50%"}
               Assert that a progress bar ([####   ]) is visible.
 
+          {"snapshot": "login_screen", "type": "text", "wait": true}
+              Save current terminal state as a named snapshot to disk.
+              type: "text" (default), "full", "png", "html", "all".
+
+          {"assert_snapshot": "login_screen", "type": "text", "wait": true}
+              Assert current state matches a saved named snapshot.
+              First run creates the golden master (passes automatically).
+              UPDATE_SNAPSHOTS=1 to force update all snapshots.
+
         Example test file: examples/echo_test.json
       HELP
       exit 0
@@ -616,9 +625,19 @@ module TUITD
             Passes if a progress bar ([####   ]) is visible.
             Usage: expect(state).to have_progress_bar
 
-        match_snapshot(snapshot, chars_only: false)
-            Passes if the current state matches a previously saved snapshot.
-            Use chars_only: true to ignore color/style changes.
+        match_snapshot("<name>", type: :text, wait: false, region: 0..6, ignore_rows: [2])
+            Named, persisted snapshot testing. First run creates the snapshot
+            (passes automatically), subsequent runs compare.
+            Types: :text (chars_only, default), :full (chars+colors), :png, :html, :all.
+            region: restricts comparison to a row range (e.g., 0..6).
+            ignore_rows: skips specific rows during comparison.
+            UPDATE_SNAPSHOTS=1 to auto-update all snapshots.
+            Usage: expect(driver).to match_snapshot("login_screen")
+            Usage: expect(driver).to match_snapshot("banner", region: 0..6, chars_only: true)
+            Usage: expect(driver).to match_snapshot("main", ignore_rows: [5], wait: true)
+
+        match_snapshot(State, chars_only: false)  (legacy in-memory)
+            Passes if the current state matches a previously saved snapshot object.
             Usage: pre = driver.snapshot; ... ; expect(driver).to match_snapshot(pre)
             Usage: expect(state).to match_snapshot(snap, chars_only: true)
 
