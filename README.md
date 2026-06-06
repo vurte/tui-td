@@ -3,11 +3,11 @@
 [![Gem Version](https://badge.fury.io/rb/tui-td.svg)](https://rubygems.org/gems/tui-td)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
 
-Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders.
+Testing framework and general-purpose TUI driver. Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders. Use it for testing, automation, or as a bridge between AI agents and terminal apps.
 
-**Language-agnostic:** The JSON test runner and CLI let you test TUIs from any language (Python, JavaScript, Rust, Go, …). Just write a `.json` file or pipe commands through `tui-td serve` (MCP).
+**Language-agnostic:** JSON tests + CLI + MCP let you drive TUIs from any language (Python, JavaScript, Rust, Go, …). Write a `.json` test plan, script via `tui-td drive`, or let an AI agent control a TUI through `tui-td serve`.
 
-**Ruby-native:** If you're in the Ruby ecosystem, tui-td integrates natively with RSpec and Minitest — auto-wait matchers and assertions included.
+**Ruby-native:** In the Ruby ecosystem, tui-td integrates with RSpec and Minitest — auto-wait matchers and assertions included.
 
 > New to tui-td? Jump to [Quick Start](docs/quick_start.md).
 
