@@ -3,7 +3,7 @@
 [![Gem Version](https://badge.fury.io/rb/tui-td.svg)](https://rubygems.org/gems/tui-td)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
 
-Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders. Includes an MCP server for AI-driven testing, auto-wait RSpec matchers, and semantic selectors.
+Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders. Includes an MCP server for AI-driven testing, auto-wait RSpec matchers, Minitest assertions, and semantic selectors.
 
 > New to tui-td? Jump to [Quick Start](docs/quick_start.md).
 
@@ -15,6 +15,7 @@ Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, sen
 4. **Multiple output formats** — structured JSON, plain text, PNG screenshots, HTML renders
 5. **JSON test runner** — language-agnostic, 15+ step types, CI-friendly
 6. **RSpec matchers** — `have_text`, `have_fg`, `have_button`, `have_dialog`, and more
+7. **Minitest assertions** — `assert_text`, `assert_button`, `assert_snapshot`, and more
 7. **MCP server** — AI agents can drive TUIs via JSON-RPC over stdio
 8. **Pure Ruby rendering** — embedded Spleen font + 2766 Unifont glyphs, no native deps required
 
@@ -117,7 +118,7 @@ Global options:
 ```
 
 `tui-td --help` serves as the full CLI reference. `tui-td help test` shows all JSON test
-step types and `tui-td help rspec` shows all RSpec matchers — no need to consult the docs.
+step types, `tui-td help rspec` shows all RSpec matchers, and `tui-td help minitest` shows all Minitest assertions — no need to consult the docs.
 
 ## Demo
 
@@ -378,6 +379,52 @@ end
 | `have_statusbar` | Assert a status bar (bottom row with background) is visible |
 | `have_progress_bar("50%")` | Assert a progress bar (`[####]`) is visible |
 | `have_exit_status(N)` | Assert the driver process exit status equals N |
+
+## Minitest Assertions
+
+Include the assertions module for native Minitest support (auto-wait included):
+
+```ruby
+require "tui_td/minitest/assertions"
+
+class MyTUITest < Minitest::Test
+  include TUITD::Minitest::Assertions
+
+  def test_login
+    driver = TUITD::Driver.new("my_tui", rows: 24, cols: 80)
+    driver.start
+    assert_text(driver, "Welcome")
+    assert_button(driver, "OK")
+    refute_text(driver, "Error")
+    assert_snapshot(driver, "login", type: :text, region: 0..6)
+  ensure
+    driver&.close
+  end
+end
+```
+
+| Assertion | Usage |
+|-----------|-------|
+| `assert_text(driver, "...")` | Assert text is present |
+| `refute_text(driver, "...")` | Assert text is NOT present |
+| `assert_regex(driver, /pattern/)` | Assert regex matches |
+| `assert_fg(driver, "cyan", row:, col:)` | Assert foreground color |
+| `assert_bg(driver, "blue", row:, col:)` | Assert background color |
+| `assert_style(driver, row:, col:, bold: true)` | Assert cell style |
+| `assert_exit_status(driver, 0)` | Assert process exit status |
+| `assert_button(driver, "OK")` | Assert button with given text |
+| `assert_dialog(driver)` | Assert a dialog is visible |
+| `assert_checkbox(driver, "Label", checked: true)` | Assert checkbox with state |
+| `assert_role(driver, :button, text: "OK")` | Generic role assertion |
+| `assert_input(driver)` | Assert an input field |
+| `assert_label(driver, "Name")` | Assert a label |
+| `assert_menu(driver)` | Assert a menu |
+| `assert_tab(driver, "File")` | Assert a tab |
+| `assert_statusbar(driver)` | Assert a status bar |
+| `assert_progress_bar(driver)` | Assert a progress bar |
+| `assert_snapshot(driver, "name", type:, region:, ignore_rows:)` | Named snapshot comparison |
+
+See `tui-td help minitest` for the full reference.
 
 ## Snapshot Testing
 
