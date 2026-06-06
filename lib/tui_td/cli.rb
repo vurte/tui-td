@@ -120,6 +120,8 @@ module TUITD
           _help_test
         when "rspec"
           _help_rspec
+        when "minitest"
+          _help_minitest
         when nil
           _help_main
         else
@@ -373,8 +375,9 @@ module TUITD
     def _help_main
       puts(OptionParser.new { |o| o.banner = "Usage: tui-td <command> [options]" })
       puts
-      puts "For more: tui-td help test   (JSON test step types)"
-      puts "          tui-td help rspec  (RSpec matchers)"
+      puts "For more: tui-td help test     (JSON test step types)"
+      puts "          tui-td help rspec    (RSpec matchers)"
+      puts "          tui-td help minitest (Minitest assertions)"
       exit 0
     end
 
@@ -647,6 +650,108 @@ module TUITD
         have_exit_status(expected)
             Assert the process exit status matches expected.
             Usage: expect(driver).to have_exit_status(0)
+      HELP
+      exit 0
+    end
+
+    def _help_minitest
+      puts <<~HELP
+        Minitest Assertions
+        ===================
+
+        Include the assertions module in your Minitest test class:
+
+          require "tui_td/minitest/assertions"
+
+          class MyTUITest < Minitest::Test
+            include TUITD::Minitest::Assertions
+
+            def setup
+              @driver = TUITD::Driver.new("my_tui", rows: 24, cols: 80)
+              @driver.start
+            end
+
+            def teardown
+              @driver&.close
+            end
+          end
+
+        Auto-wait: When given a Driver, assertions wait up to 3 seconds.
+        When given a State, assertions check immediately.
+
+        Assertions
+        ----------
+
+        Text / Regex / Color / Style:
+
+        assert_text(driver, "Welcome")
+            Passes if text appears anywhere in the terminal.
+            Negate: refute_text(driver, "Error")
+
+        assert_regex(driver, /error|fail/)
+            Passes if regex pattern matches anywhere.
+            Negate: refute_regex(driver, /pattern/)
+
+        assert_fg(driver, "cyan", row: 0, col: 5)
+            Assert foreground color at position.
+
+        assert_bg(driver, "blue", row: 0, col: 0)
+            Assert background color at position.
+
+        assert_style(driver, row: 0, col: 0, bold: true, italic: false)
+            Assert style attributes at position.
+
+        assert_exit_status(driver, 0)
+            Assert the process exit status matches expected.
+
+        Selector assertions:
+
+        assert_button(driver, "OK")
+            Passes if a button with given text is visible.
+            Negate: refute_button(driver, "Cancel")
+
+        assert_dialog(driver)
+            Passes if a dialog (box-drawing region) is visible.
+            Negate: refute_dialog(driver)
+
+        assert_checkbox(driver, "Label", checked: true)
+            Passes if checkbox with given label (and optionally state) is visible.
+            Use checked: true, checked: false, or unchecked: true.
+
+        assert_role(driver, :button, text: "OK", checked: nil, disabled: nil)
+            Generic role assertion. Accepts :button, :checkbox, :dialog,
+            :statusbar, :progress, :input, :label, :menu, :tab.
+
+        assert_input(driver)
+        assert_input(driver, "Name")
+            Passes if an input field ([____]) is visible.
+
+        assert_label(driver, "Username")
+            Passes if a label (text ending with colon) is visible.
+
+        assert_menu(driver)
+            Passes if a menu bar or dropdown item is visible.
+
+        assert_tab(driver, "File")
+            Passes if a tab is visible.
+
+        assert_statusbar(driver)
+            Passes if a status bar (bottom row with background) is visible.
+
+        assert_progress_bar(driver, "50%")
+            Passes if a progress bar ([####   ]) is visible.
+
+        Snapshot:
+
+        assert_snapshot(driver, "login_screen", type: :text, wait: true)
+            Named snapshot testing. First run creates golden master,
+            subsequent runs compare.
+
+        assert_snapshot(driver, "banner", region: 0..6, chars_only: true)
+            Partial screen comparison with region:.
+
+        assert_snapshot(driver, "main", ignore_rows: [5])
+            Skip volatile rows with ignore_rows:.
       HELP
       exit 0
     end

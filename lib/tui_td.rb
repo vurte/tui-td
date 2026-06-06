@@ -19,6 +19,7 @@ require_relative "tui_td/screenshot"
 require_relative "tui_td/html_renderer"
 require_relative "tui_td/test_runner"
 require_relative "tui_td/selector"
+require_relative "tui_td/minitest/assertions"
 require_relative "tui_td/mcp/server"
 require_relative "tui_td/cli"
 

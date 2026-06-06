@@ -6,6 +6,7 @@ gemspec
 
 gem "cairo", "~> 1.18"
 gem "chunky_png", "~> 1.4"
+gem "minitest", "~> 5.0"
 gem "pry", "~> 0.14"
 gem "rake", "~> 13.0"
 gem "rspec", "~> 3.12"
