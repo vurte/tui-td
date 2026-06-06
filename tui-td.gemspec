@@ -8,11 +8,12 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Haluk Durmus"]
   spec.email         = ["haluk_durmus@yahoo.de"]
 
-  spec.summary       = "TUI testing framework — language-agnostic via JSON tests and MCP"
+  spec.summary       = "TUI testing framework — RSpec, Minitest, JSON, and MCP"
   spec.description   = "tui-td drives terminal applications in a PTY, captures ANSI state " \
                        "as structured data, and provides PNG screenshots and HTML renders. " \
                        "Includes an MCP server for AI-driven testing, a JSON test runner, " \
-                       "and RSpec matchers."
+                       "RSpec matchers, Minitest assertions, semantic selectors, and named " \
+                       "snapshot testing."
   spec.homepage      = "https://github.com/vurte/tui-td"
   spec.license       = "MIT"
 
