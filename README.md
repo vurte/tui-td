@@ -3,7 +3,11 @@
 [![Gem Version](https://badge.fury.io/rb/tui-td.svg)](https://rubygems.org/gems/tui-td)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE.txt)
 
-Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders. Includes an MCP server for AI-driven testing, auto-wait RSpec matchers, Minitest assertions, and semantic selectors.
+Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, send input, analyze output — as structured JSON, plain text, PNG screenshots, or HTML renders.
+
+**Language-agnostic:** The JSON test runner and CLI let you test TUIs from any language (Python, JavaScript, Rust, Go, …). Just write a `.json` file or pipe commands through `tui-td serve` (MCP).
+
+**Ruby-native:** If you're in the Ruby ecosystem, tui-td integrates natively with RSpec and Minitest — auto-wait matchers and assertions included.
 
 > New to tui-td? Jump to [Quick Start](docs/quick_start.md).
 
@@ -13,11 +17,11 @@ Testing framework for Terminal User Interfaces (TUIs). Start a TUI in a PTY, sen
 2. **Auto-wait assertions** — matchers automatically retry until the condition is met or timeout
 3. **Semantic selectors** — `get_by_role(:button)`, `get_by_role(:dialog)`, `within { }` scoping
 4. **Multiple output formats** — structured JSON, plain text, PNG screenshots, HTML renders
-5. **JSON test runner** — language-agnostic, 15+ step types, CI-friendly
+5. **JSON test runner** — language-agnostic, 23+ step types, CI-friendly
 6. **RSpec matchers** — `have_text`, `have_fg`, `have_button`, `have_dialog`, and more
 7. **Minitest assertions** — `assert_text`, `assert_button`, `assert_snapshot`, and more
-7. **MCP server** — AI agents can drive TUIs via JSON-RPC over stdio
-8. **Pure Ruby rendering** — embedded Spleen font + 2766 Unifont glyphs, no native deps required
+8. **MCP server** — AI agents can drive TUIs via JSON-RPC over stdio
+9. **Pure Ruby rendering** — embedded Spleen font + 2766 Unifont glyphs, no native deps required
 
 ## Installation
 
