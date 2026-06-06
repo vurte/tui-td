@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## 0.2.19
+
+### Added
+
+- Minitest integration: `TUITD::Minitest::Assertions` module with 34 assertion methods
+  (17 assert + 17 refute) covering text, regex, colors, styles, exit status, all 9
+  element roles, and named snapshots with region/ignore_rows support
+- Auto-wait for Minitest: Driver assertions wait up to 3s, State checks immediately
+- `tui-td help minitest` — complete assertion reference
+- Example: `examples/minitest_example_test.rb` with 7 test cases
+- Smoke test: `test/minitest_smoke_test.rb` (10 runs, 19 assertions)
+
+### Changed
+
+- Updated gemspec metadata (summary, description) for rubygems.org
+
+## 0.2.18
+
+(yanked — same as 0.2.19 but with outdated gemspec metadata)
+
 ## 0.2.17
 
 ### Added
