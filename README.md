@@ -379,6 +379,56 @@ end
 | `have_progress_bar("50%")` | Assert a progress bar (`[####]`) is visible |
 | `have_exit_status(N)` | Assert the driver process exit status equals N |
 
+## Snapshot Testing
+
+Named, persisted snapshot testing à la Playwright/Jest. First run creates a golden master — subsequent runs compare.
+
+### RSpec
+
+```ruby
+# Named snapshot (recommended)
+expect(driver).to match_snapshot("login_screen")
+expect(driver).to match_snapshot("login_screen", type: :all, wait: true)
+
+# Partial screen comparison
+expect(driver).to match_snapshot("banner", region: 0..6, chars_only: true)
+
+# Skip volatile rows (e.g., prompt line)
+expect(driver).to match_snapshot("main", ignore_rows: [5])
+
+# In-memory comparison (legacy)
+pre = driver.snapshot
+expect(driver).to match_snapshot(pre, chars_only: true)
+```
+
+### Configuration
+
+```ruby
+TUITD.configure do |c|
+  c.snapshot_dir = "spec/snapshots"   # default
+end
+
+# Update all snapshots
+UPDATE_SNAPSHOTS=1 bundle exec rspec
+```
+
+### JSON Test Steps
+
+```json
+{"snapshot": "login_screen", "type": "text"}
+{"assert_snapshot": "login_screen", "type": "png", "wait": true}
+```
+
+### Types
+
+| Type | Comparison | File |
+|------|-----------|------|
+| `:text` | chars only (ignores colors/styles) | `.json` |
+| `:full` | full cell comparison (chars + colors) | `.json` |
+| `:png` | screenshot byte-identical | `.png` |
+| `:html` | HTML render byte-identical | `.html` |
+| `:all` | all three at once | `.json` + `.png` + `.html` |
+
 ## MCP Server — AI Integration
 
 Start the MCP server to let any MCP client control TUIs:
@@ -407,6 +457,8 @@ tui-td serve
 | `tui_element_actions` | Get click/type/press_key action hashes for a detected UI element. For AI-driven interaction. |
 | `tui_diff` | Compare current state against a previous snapshot. Returns cell-level differences. |
 | `tui_annotate_element` | Manually register a UI element annotation. Picked up by tui_find_elements. |
+| `tui_save_snapshot` | Save the current terminal state as a named snapshot to disk. |
+| `tui_assert_snapshot` | Assert current state matches a saved named snapshot. Creates on first run. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
