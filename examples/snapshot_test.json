@@ -1,0 +1,20 @@
+{
+  "name": "Snapshot Testing Example",
+  "rows": 10,
+  "cols": 40,
+  "steps": [
+    {"start": "sh -c \"echo '┌── Login ──┐'; echo '│ [ OK ]    │'; echo '└──────────┘'\""},
+    {"wait_for_stable": true},
+
+    {"assert_snapshot": "login_dialog", "type": "text"},
+
+    {"close": true},
+    {"start": "sh -c \"echo '┌── Login ──┐'; echo '│ [ OK ]    │'; echo '└──────────┘'\""},
+    {"wait_for_stable": true},
+    {"assert_snapshot": "login_dialog", "type": "text"},
+
+    {"snapshot": "login_full", "type": "all"},
+
+    {"close": true}
+  ]
+}

@@ -1,0 +1,28 @@
+{
+  "name": "Semantic Selector Elements Example",
+  "rows": 10,
+  "cols": 50,
+  "steps": [
+    {"start": "sh -c \"echo 'File    Edit    View'; echo '[ OK ]  (Cancel)  <Submit>'; echo '[x] Enable logging'; echo '[ ] Auto-save'; echo 'Name: [________]'; echo '[Tab1] [Tab2] [Tab3]'; echo '[#####         ] 50%'\""},
+    {"wait_for_stable": true},
+
+    {"assert_button": "OK"},
+    {"assert_button": "Cancel"},
+    {"assert_role": "Cancel", "role": "button"},
+
+    {"assert_checkbox": "Enable", "checked": true},
+    {"assert_checkbox": "Auto-save", "checked": false},
+
+    {"assert_input": true},
+
+    {"assert_label": "Name"},
+
+    {"assert_menu": true},
+
+    {"assert_tab": "Tab1"},
+
+    {"assert_progress_bar": true},
+
+    {"close": true}
+  ]
+}
