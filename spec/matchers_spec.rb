@@ -579,4 +579,60 @@ RSpec.describe TUITD::Matchers do
       expect(state).to match_snapshot(snapshot, chars_only: true)
     end
   end
+
+  describe "be_recording" do
+    it "is true when driver is recording" do
+      driver = TUITD::Driver.new("echo test", rows: 3, cols: 10, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+
+      allow(TUITD::VideoRecorder).to receive(:available?).and_return(true)
+      driver.start_recording("/tmp/rspec_test_#{Process.pid}.mp4", framerate: 2)
+
+      expect(driver).to be_recording
+
+      driver.stop_recording
+      driver.close
+      FileUtils.rm_f("/tmp/rspec_test_#{Process.pid}.mp4")
+    end
+
+    it "is false when driver is not recording" do
+      driver = TUITD::Driver.new("echo test", rows: 3, cols: 10, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+
+      expect(driver).not_to be_recording
+
+      driver.close
+    end
+  end
+
+  describe "have_recorded_video" do
+    it "is true when video file exists and has content" do
+      driver = TUITD::Driver.new("echo test", rows: 3, cols: 10, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+
+      allow(TUITD::VideoRecorder).to receive(:available?).and_return(true)
+      path = "/tmp/rspec_video_#{Process.pid}.mp4"
+      driver.start_recording(path, framerate: 2)
+      sleep 0.5
+      driver.stop_recording
+
+      expect(driver).to have_recorded_video(path)
+
+      driver.close
+      FileUtils.rm_f(path)
+    end
+
+    it "is false when video file does not exist" do
+      driver = TUITD::Driver.new("echo test", rows: 3, cols: 10, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+
+      expect(driver).not_to have_recorded_video("/tmp/nonexistent_#{Process.pid}.mp4")
+
+      driver.close
+    end
+  end
 end

@@ -227,7 +227,37 @@ module TUITD
                     Result.new(step: action, passed: result.passed?, message: msg)
                   end
 
+                when "start_recording"
+                  ensure_driver!(driver)
+                  framerate = step[:framerate] || 30
+                  codec = step[:codec] || "libx264"
+                  path = safe_output_path(value.to_s, "mp4")
+                  driver.start_recording(path, framerate: framerate, codec: codec)
+                  Result.new(step: action, passed: true, message: "Recording started: #{path}")
+
+                when "stop_recording"
+                  ensure_driver!(driver)
+                  if driver.recording?
+                    path = driver.stop_recording
+                    Result.new(step: action, passed: true, message: "Recording saved: #{path}")
+                  else
+                    Result.new(step: action, passed: false, message: "No recording in progress")
+                  end
+
+                when "assert_recording"
+                  ensure_driver!(driver)
+                  expected = value == true || value.nil? # true/nil → assert active; false → assert NOT active
+                  is_recording = driver.recording?
+                  if is_recording == expected
+                    state = expected ? "is active" : "is NOT active"
+                    Result.new(step: action, passed: true, message: "Recording #{state} (as expected)")
+                  else
+                    state = is_recording ? "IS active (expected not)" : "is NOT active (expected active)"
+                    Result.new(step: action, passed: false, message: "Recording #{state}")
+                  end
+
                 when "close"
+                  driver&.stop_recording if driver&.recording?
                   driver&.close
                   driver = nil
                   Result.new(step: action, passed: true, message: "Closed")

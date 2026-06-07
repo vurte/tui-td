@@ -71,6 +71,15 @@ module TUITD
         opts.on("--html PATH", "Save HTML render (e.g., output.html)") do |p|
           global_opts[:html] = p
         end
+        opts.on("--record PATH", "Record session as video (MP4/WebM, requires ffmpeg)") do |p|
+          global_opts[:record] = p
+        end
+        opts.on("--framerate N", Integer, "Recording framerate (default: 30)") do |f|
+          global_opts[:record_framerate] = f
+        end
+        opts.on("--codec NAME", "Video codec: libx264, libx265, libvpx-vp9 (default: libx264)") do |c|
+          global_opts[:record_codec] = c
+        end
         opts.on("--json", "Output state as compact JSON") do |_|
           global_opts[:format] = :json
         end
@@ -136,6 +145,23 @@ module TUITD
 
     private
 
+    def _start_recording_if(driver, globals)
+      return unless globals[:record]
+
+      framerate = globals[:record_framerate] || 30
+      codec = globals[:record_codec] || "libx264"
+      path = driver.start_recording(globals[:record], framerate: framerate, codec: codec)
+      puts "Recording to: #{path}"
+      path
+    end
+
+    def _stop_recording(driver)
+      return unless driver.recording?
+
+      path = driver.stop_recording
+      puts "Recording saved: #{path}" if path
+    end
+
     def cmd_serve(globals)
       server = MCP::Server.new(
         rows: globals[:rows] || 40,
@@ -155,6 +181,8 @@ module TUITD
       puts "─" * (globals[:cols] || 80)
       driver.start
 
+      _start_recording_if(driver, globals)
+
       driver.wait_for_stable
 
       if %i[json pretty_json].include?(globals[:format])
@@ -172,6 +200,7 @@ module TUITD
         puts "HTML saved: #{path}"
       end
 
+      _stop_recording(driver)
       driver.close
     end
 
@@ -184,6 +213,8 @@ module TUITD
       puts "Starting interactive drive: #{cmd}"
       puts "Type commands to send. Exit with Ctrl+C."
       driver.start
+
+      _start_recording_if(driver, globals)
 
       begin
         loop do
@@ -264,6 +295,7 @@ module TUITD
       rescue Interrupt
         puts "\nDone."
       ensure
+        _stop_recording(driver)
         driver.close
       end
     end
@@ -281,6 +313,9 @@ module TUITD
         # Proceed with whatever was rendered before the timeout.
         driver.refresh
       end
+
+      _start_recording_if(driver, globals)
+
       begin
         driver.wait_for_stable
       rescue TimeoutError
@@ -305,6 +340,7 @@ module TUITD
         puts "HTML saved: #{path}"
       end
 
+      _stop_recording(driver)
       driver.close
     end
 
@@ -461,6 +497,16 @@ module TUITD
 
           {"html": "<path>"}
               Save an HTML render. Path defaults to /tmp/tui_td_<ts>.html.
+
+          {"start_recording": "<path>", "framerate": 30, "codec": "libx264"}
+              Start recording the TUI session as a video (requires ffmpeg).
+              framerate defaults to 30, codec defaults to libx264.
+
+          {"stop_recording": true}
+              Stop video recording and finalize the video file.
+
+          {"assert_recording": true}
+              Assert that recording is active. Use false to assert NOT recording.
 
           {"wait_for_exit": true}
               Wait until the process exits naturally.
@@ -650,6 +696,22 @@ module TUITD
         have_exit_status(expected)
             Assert the process exit status matches expected.
             Usage: expect(driver).to have_exit_status(0)
+
+        Video Recording
+        ---------------
+
+        Start/stop recording via Driver methods, then verify with matchers:
+
+          driver.start_recording("test.mp4", framerate: 30, codec: "libx264")
+          expect(driver).to be_recording
+          # ... interact with TUI ...
+          driver.stop_recording
+          expect(driver).not_to be_recording
+          expect(driver).to have_recorded_video("test.mp4")
+
+        Options for start_recording: framerate (default 30),
+        codec (libx264, libx265, libvpx-vp9), quality (high/medium/low).
+        Recording stops automatically when the driver is closed.
       HELP
       exit 0
     end
@@ -752,6 +814,21 @@ module TUITD
 
         assert_snapshot(driver, "main", ignore_rows: [5])
             Skip volatile rows with ignore_rows:.
+
+        Video Recording
+        ---------------
+
+        assert_record_start(driver, "test.mp4", framerate: 30, codec: "libx264")
+            Start recording the TUI session as a video (requires ffmpeg).
+
+        assert_record_stop(driver)
+            Stop recording and finalize the video file.
+
+        assert_recording(driver)
+            Verify that recording is currently active.
+
+        refute_recording(driver)
+            Verify that recording is NOT active.
       HELP
       exit 0
     end

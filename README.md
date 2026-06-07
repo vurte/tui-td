@@ -22,6 +22,7 @@ Testing framework and general-purpose TUI driver. Start a TUI in a PTY, send inp
 7. **Minitest assertions** — `assert_text`, `assert_button`, `assert_snapshot`, and more
 8. **MCP server** — AI agents can drive TUIs via JSON-RPC over stdio
 9. **Pure Ruby rendering** — embedded Spleen font + 2766 Unifont glyphs, no native deps required
+10. **Video recording** — record TUI sessions as MP4 via ffmpeg for demos, debugging, and AI agent playback
 
 ## Installation
 
@@ -57,6 +58,9 @@ tui-td --html output.html capture "htop"
 
 # Save as a PNG screenshot
 tui-td --screenshot output.png capture "htop"
+
+# Record a session as video (requires ffmpeg)
+tui-td --record demo.mp4 capture "htop" --timeout 10
 
 # Drive a TUI interactively
 tui-td drive "htop"
@@ -111,6 +115,9 @@ Global options:
     -C, --chdir PATH                 Working directory for the command
         --screenshot PATH            Save screenshot (e.g., output.png)
         --html PATH                  Save HTML render (e.g., output.html)
+        --record PATH                Record session as video (MP4/WebM, requires ffmpeg)
+        --framerate N                Recording framerate (default: 30)
+        --codec NAME                 Video codec: libx264, libx265, libvpx-vp9 (default: libx264)
         --json                       Output state as compact JSON
         --pretty                     Output state as pretty JSON
         --text                       Output state as plain text table
@@ -165,6 +172,11 @@ driver.state_json(pretty: true)  # Pretty JSON
 driver.screenshot("screenshot.png")  # PNG renderer
 TUITD::HtmlRenderer.new(driver.state_data).render("output.html")  # HTML renderer
 html_string = TUITD::HtmlRenderer.new(driver.state_data).to_html   # HTML string
+
+# Video recording (requires ffmpeg)
+driver.start_recording("session.mp4", framerate: 30, codec: "libx264")
+driver.recording?                   # => true
+driver.stop_recording               # => "session.mp4"
 
 driver.close
 ```
@@ -298,6 +310,9 @@ tui-td test examples/echo_test.json
 | `assert_tab` | `"text"` | Assert a tab (`[Tab1]`) is visible |
 | `assert_statusbar` | — | Assert a status bar (bottom row with background) is visible |
 | `assert_progress_bar` | `"text"` (optional) | Assert a progress bar (`[####]`) is visible |
+| `start_recording` | `"path", "framerate": 30` | Start video recording (requires ffmpeg) |
+| `stop_recording` | — | Stop recording and finalize video |
+| `assert_recording` | `true` / `false` | Assert recording is active / not active |
 | `close` | — | Close the TUI |
 
 Example with `html` step for before/after snapshots:
@@ -383,6 +398,8 @@ end
 | `have_statusbar` | Assert a status bar (bottom row with background) is visible |
 | `have_progress_bar("50%")` | Assert a progress bar (`[####]`) is visible |
 | `have_exit_status(N)` | Assert the driver process exit status equals N |
+| `be_recording` | Assert that the driver is currently recording video |
+| `have_recorded_video("path.mp4")` | Assert that a video file was created and has content |
 
 ## Minitest Assertions
 
@@ -427,6 +444,10 @@ end
 | `assert_statusbar(driver)` | Assert a status bar |
 | `assert_progress_bar(driver)` | Assert a progress bar |
 | `assert_snapshot(driver, "name", type:, region:, ignore_rows:)` | Named snapshot comparison |
+| `assert_record_start(driver, "path", framerate:)` | Start video recording |
+| `assert_record_stop(driver)` | Stop recording and finalize video |
+| `assert_recording(driver)` | Assert recording is active |
+| `refute_recording(driver)` | Assert recording is NOT active |
 
 See `tui-td help minitest` for the full reference.
 
@@ -510,6 +531,9 @@ tui-td serve
 | `tui_annotate_element` | Manually register a UI element annotation. Picked up by tui_find_elements. |
 | `tui_save_snapshot` | Save the current terminal state as a named snapshot to disk. |
 | `tui_assert_snapshot` | Assert current state matches a saved named snapshot. Creates on first run. |
+| `tui_record_start` | Start video recording with path, framerate, codec, and quality options. |
+| `tui_record_stop` | Stop recording and finalize the video file. |
+| `tui_record_status` | Check if recording is currently active. |
 | `tui_close` | Close the TUI and clean up. |
 
 ### MCP configuration
@@ -654,6 +678,93 @@ html = TUITD::HtmlRenderer.new(driver.state_data).to_html
 // Test-Runner — before/after snapshots
 {"html": "/tmp/snapshot.html"}
 ```
+
+## Video Recording
+
+Record TUI sessions as MP4 video using ffmpeg. Frames are captured via the same Screenshot pipeline and piped directly to ffmpeg for incremental encoding — no temporary frame files.
+
+**Requires ffmpeg** (`brew install ffmpeg` on macOS, `apt install ffmpeg` on Debian).
+
+```bash
+# Record a capture session
+tui-td --record demo.mp4 capture "htop" --timeout 10
+
+# High-framerate recording
+tui-td --record session.mp4 --framerate 60 drive "vim file.txt"
+
+# Custom codec and quality
+tui-td --record output.mp4 --codec libx265 --framerate 30 capture "glow README.md"
+```
+
+### Ruby API
+
+```ruby
+driver = TUITD::Driver.new("htop", rows: 40, cols: 120)
+driver.start
+
+# Start recording
+driver.start_recording("session.mp4", framerate: 30, codec: "libx264", quality: "high")
+
+# Check recording status
+driver.recording?  # => true
+
+# ... interact with TUI ...
+
+# Stop recording
+driver.stop_recording  # => "session.mp4"
+driver.close             # auto-stops recording if active
+```
+
+### Configuration
+
+```ruby
+TUITD.configure do |c|
+  c.ffmpeg_path           = "/usr/local/bin/ffmpeg"  # default: auto-detect
+  c.record_default_fps    = 30
+  c.record_default_codec  = "libx264"
+end
+```
+
+### RSpec
+
+```ruby
+require "tui_td/matchers"
+
+driver.start_recording("test.mp4", framerate: 30)
+expect(driver).to be_recording
+# ... interact ...
+driver.stop_recording
+expect(driver).not_to be_recording
+expect(driver).to have_recorded_video("test.mp4")
+```
+
+### Minitest
+
+```ruby
+require "tui_td/minitest/assertions"
+
+assert_record_start(driver, "test.mp4", framerate: 30)
+assert_recording(driver)
+# ... interact ...
+assert_record_stop(driver)
+refute_recording(driver)
+```
+
+### JSON Test Steps
+
+```json
+{"start_recording": "output.mp4", "framerate": 30, "codec": "libx264"}
+{"assert_recording": true}
+{"stop_recording": true}
+```
+
+### MCP Tools
+
+| Tool | Description |
+|------|-------------|
+| `tui_record_start` | Start recording with path, framerate, codec, quality |
+| `tui_record_stop` | Stop recording and finalize video file |
+| `tui_record_status` | Check if recording is currently active |
 
 ## License
 

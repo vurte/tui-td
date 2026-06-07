@@ -134,6 +134,37 @@ module TUITD
       end
     end
 
+    # Video recording matchers — work on Driver instances
+
+    RSpec::Matchers.define :be_recording do
+      match do |driver|
+        @actual = driver.recording?
+        @actual
+      end
+
+      description { "be recording video" }
+      failure_message do |_driver|
+        "expected driver to be recording, but it is not"
+      end
+      failure_message_when_negated do |_driver|
+        "expected driver NOT to be recording, but it is"
+      end
+    end
+
+    RSpec::Matchers.define :have_recorded_video do |path|
+      match do |_actual|
+        File.exist?(File.expand_path(path)) && File.size(File.expand_path(path)).positive?
+      end
+
+      description { "have recorded video at #{path}" }
+      failure_message do |_actual|
+        "expected video file to exist at #{path}"
+      end
+      failure_message_when_negated do |_actual|
+        "expected video file NOT to exist at #{path}"
+      end
+    end
+
     # Selector-based matchers — work with both State and Driver (auto-wait)
 
     RSpec::Matchers.define :have_button do |expected|

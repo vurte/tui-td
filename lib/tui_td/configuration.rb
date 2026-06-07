@@ -9,10 +9,13 @@ module TUITD
   #   end
   #
   class Configuration
-    attr_accessor :snapshot_dir
+    attr_accessor :snapshot_dir, :ffmpeg_path, :record_default_fps, :record_default_codec
 
     def initialize
       @snapshot_dir = nil
+      @ffmpeg_path = nil
+      @record_default_fps = 30
+      @record_default_codec = "libx264"
     end
 
     # Check if UPDATE_SNAPSHOTS env var is set to update mode.

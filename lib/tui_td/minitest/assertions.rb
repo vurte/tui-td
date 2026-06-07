@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+# rubocop:disable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists, Metrics/ModuleLength
 
 require "minitest"
 
@@ -234,6 +234,48 @@ module TUITD
         assert(result, msg)
       end
 
+      # --- Video Recording ---
+
+      # Start recording the TUI session as a video (requires ffmpeg).
+      # +actual+ must be a Driver.
+      def assert_record_start(actual, path, framerate: 30, codec: "libx264", quality: "high")
+        unless actual.respond_to?(:start_recording)
+          raise ArgumentError, "assert_record_start requires a Driver, got #{actual.class}"
+        end
+
+        result = actual.start_recording(path, framerate: framerate, codec: codec, quality: quality)
+        assert(result, "Recording failed to start")
+      end
+
+      # Stop video recording and finalize the video file.
+      # +actual+ must be a Driver.
+      def assert_record_stop(actual)
+        unless actual.respond_to?(:stop_recording)
+          raise ArgumentError, "assert_record_stop requires a Driver, got #{actual.class}"
+        end
+
+        path = actual.stop_recording
+        assert(path, "No recording in progress")
+      end
+
+      # Verify that recording is currently active.
+      def assert_recording(actual)
+        unless actual.respond_to?(:recording?)
+          raise ArgumentError, "assert_recording requires a Driver, got #{actual.class}"
+        end
+
+        assert(actual.recording?, "Expected recording to be active")
+      end
+
+      # Verify that recording is NOT active.
+      def refute_recording(actual)
+        unless actual.respond_to?(:recording?)
+          raise ArgumentError, "refute_recording requires a Driver, got #{actual.class}"
+        end
+
+        refute(actual.recording?, "Expected recording NOT to be active")
+      end
+
       # --- Snapshot ---
 
       def assert_snapshot(actual, name, type: :text, wait: false, region: nil, ignore_rows: nil)
@@ -260,4 +302,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists
+# rubocop:enable Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/ParameterLists, Metrics/ModuleLength

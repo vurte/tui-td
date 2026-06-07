@@ -72,7 +72,8 @@ expected_tools = %w[tui_start tui_send tui_state tui_close tui_screenshot
                     tui_plain_text tui_html_render tui_wait_for_exit
                     tui_exit_status tui_find_text tui_find_elements
                     tui_element_actions tui_diff tui_annotate_element
-                    tui_save_snapshot tui_assert_snapshot]
+                    tui_save_snapshot tui_assert_snapshot
+                    tui_record_start tui_record_stop tui_record_status]
 tc = 0
 tc += 1 if assert("returns tool list", tools.length.positive?)
 expected_tools.each do |tname|
@@ -511,6 +512,92 @@ tests += 1
 
 # Cleanup
 FileUtils.rm_rf("spec/snapshots/smoke_assert_snap1.json")
+
+# =================================================================
+# Recording tools
+# =================================================================
+
+# -- Test 32: tui_record_start ---------------------------------------
+puts "\nTest 32: tui_record_start"
+if TUITD::VideoRecorder.available?
+  responses = simulate_server(
+    [
+      %({"jsonrpc":"2.0","id":58,"method":"tools/call","params":{"name":"tui_start","arguments":{"command":"echo recording_test"}}}),
+      %({"jsonrpc":"2.0","id":59,"method":"tools/call","params":{"name":"tui_record_start","arguments":{"path":"/tmp/tui_td_smoke_record_#{Process.pid}.mp4","framerate":2}}}),
+    ],
+  )
+  r32 = JSON.parse(responses[1], symbolize_names: true)
+  rec_start_text = r32.dig(:result, :content, 0, :text) || ""
+  tc = 0
+  tc += 1 if assert("record_start returns OK", rec_start_text.start_with?("OK"))
+  tc += 1 if assert("record_start includes path", rec_start_text.include?("smoke_record"))
+  tc += 1 if assert("record_start includes fps", rec_start_text.include?("2 fps"))
+  passed += tc
+  tests += 3
+else
+  puts "  SKIP: ffmpeg not available"
+end
+
+# -- Test 33: tui_record_status --------------------------------------
+puts "\nTest 33: tui_record_status"
+if TUITD::VideoRecorder.available?
+  server = TUITD::MCP::Server.new(rows: 10, cols: 40)
+  start_req = { "jsonrpc" => "2.0", "id" => 60, "method" => "tools/call",
+                "params" => { "name" => "tui_start", "arguments" => { "command" => "echo status_test" } }, }
+  server.send(:handle_request, start_req)
+
+  rec_start = { "jsonrpc" => "2.0", "id" => 61, "method" => "tools/call",
+                "params" => { "name" => "tui_record_start", "arguments" => { "path" => "/tmp/tui_td_smoke_status_#{Process.pid}.mp4", "framerate" => 2 } }, }
+  server.send(:handle_request, rec_start)
+
+  status_req = { "jsonrpc" => "2.0", "id" => 62, "method" => "tools/call",
+                 "params" => { "name" => "tui_record_status", "arguments" => {} }, }
+  r33 = server.send(:handle_request, status_req)
+  status_text = r33.dig(:result, :content, 0, :text) || ""
+  tc = 0
+  tc += 1 if assert("record_status shows active", status_text.include?("Recording is active"))
+  passed += tc
+  tests += 1
+
+  # Cleanup
+  stop_req = { "jsonrpc" => "2.0", "id" => 63, "method" => "tools/call",
+               "params" => { "name" => "tui_record_stop", "arguments" => {} }, }
+  server.send(:handle_request, stop_req)
+  FileUtils.rm_f("/tmp/tui_td_smoke_status_#{Process.pid}.mp4")
+  FileUtils.rm_f("/tmp/tui_td_smoke_record_#{Process.pid}.mp4")
+else
+  puts "  SKIP: ffmpeg not available"
+end
+
+# -- Test 34: tui_record_stop ----------------------------------------
+puts "\nTest 34: tui_record_stop"
+if TUITD::VideoRecorder.available?
+  server = TUITD::MCP::Server.new(rows: 5, cols: 20)
+  start_req = { "jsonrpc" => "2.0", "id" => 64, "method" => "tools/call",
+                "params" => { "name" => "tui_start", "arguments" => { "command" => "echo stop_test" } }, }
+  server.send(:handle_request, start_req)
+
+  rec_start = { "jsonrpc" => "2.0", "id" => 65, "method" => "tools/call",
+                "params" => { "name" => "tui_record_start", "arguments" => { "path" => "/tmp/tui_td_smoke_stop_#{Process.pid}.mp4", "framerate" => 2 } }, }
+  server.send(:handle_request, rec_start)
+
+  # Let a couple frames capture
+  sleep 0.3
+
+  stop_req = { "jsonrpc" => "2.0", "id" => 66, "method" => "tools/call",
+               "params" => { "name" => "tui_record_stop", "arguments" => {} }, }
+  r34 = server.send(:handle_request, stop_req)
+  stop_text = r34.dig(:result, :content, 0, :text) || ""
+  tc = 0
+  tc += 1 if assert("record_stop returns OK", stop_text.start_with?("OK"))
+  tc += 1 if assert("record_stop saved path", stop_text.include?("smoke_stop"))
+  passed += tc
+  tests += 2
+
+  FileUtils.rm_f("/tmp/tui_td_smoke_stop_#{Process.pid}.mp4")
+else
+  puts "  SKIP: ffmpeg not available"
+end
 
 # =================================================================
 # Summary

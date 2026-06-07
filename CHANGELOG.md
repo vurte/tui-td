@@ -1,5 +1,26 @@
 # CHANGELOG
 
+## 0.2.20
+
+### Added
+
+- Video recording via ffmpeg: `VideoRecorder` class pipes PNG frames from the
+  existing Screenshot pipeline directly to ffmpeg for incremental encoding
+- Driver methods: `start_recording`, `stop_recording`, `recording?`
+- CLI flags: `--record <path>`, `--framerate <N>`, `--codec <name>`
+- MCP tools: `tui_record_start`, `tui_record_stop`, `tui_record_status`
+- JSON test steps: `start_recording`, `stop_recording`, `assert_recording`
+- Minitest assertions: `assert_record_start`, `assert_record_stop`,
+  `assert_recording`, `refute_recording`
+- RSpec matchers: `be_recording`, `have_recorded_video`
+- Configuration: `ffmpeg_path`, `record_default_fps`, `record_default_codec`
+- `Screenshot#to_blob` for in-memory PNG rendering (no temp files)
+
+### Changed
+
+- `Driver#close` auto-stops recording if active
+- `TestRunner#run` auto-stops recording on `close` step
+
 ## 0.2.19
 
 ### Added

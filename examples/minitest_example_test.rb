@@ -5,6 +5,7 @@
 # Run with: ruby -I lib -I test examples/minitest_example_test.rb
 
 require "minitest/autorun"
+require "fileutils"
 require "tui_td"
 require "tui_td/minitest/assertions"
 
@@ -94,5 +95,26 @@ class TUITest < Minitest::Test
     assert_snapshot(driver, "banner_region", type: :text, region: 0..0)
   ensure
     driver&.close
+  end
+
+  def test_video_recording
+    skip "ffmpeg not available" unless TUITD::VideoRecorder.available?
+
+    path = "/tmp/minitest_example_recording_#{Process.pid}.mp4"
+    driver = TUITD::Driver.new("echo 'Recording from Minitest!' && sleep 0.3 && echo 'Done.'", rows: 3, cols: 30, timeout: 5)
+    driver.start
+    driver.wait_for_text("Recording")
+
+    assert_record_start(driver, path, framerate: 2)
+    assert_recording(driver)
+    driver.wait_for_text("Done")
+    assert_record_stop(driver)
+    refute_recording(driver)
+
+    assert File.exist?(path), "Video file should exist after recording"
+    assert File.size(path).positive?, "Video file should have content"
+  ensure
+    driver&.close
+    FileUtils.rm_f(path)
   end
 end

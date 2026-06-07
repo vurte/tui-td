@@ -224,8 +224,36 @@ module TUITD
       TUITD::State.new(state_data)
     end
 
+    # Start video recording (requires ffmpeg).
+    # Options: framerate (default 30), codec (default "libx264"), quality ("high"/"medium"/"low").
+    def start_recording(path, framerate: 30, codec: "libx264", quality: "high")
+      raise Error, "Recording already in progress" if recording?
+
+      require_relative "video_recorder"
+      @recorder = VideoRecorder.new(path, driver: self, framerate: framerate,
+                                          codec: codec, quality: quality,)
+      @recorder.start
+      path
+    end
+
+    # Stop video recording and finalize the video file.
+    # Returns the output path, or nil if not recording.
+    def stop_recording
+      return nil unless @recorder
+
+      path = @recorder.stop
+      @recorder = nil
+      path
+    end
+
+    # Is video recording currently active?
+    def recording?
+      @recorder&.recording? || false
+    end
+
     # Close the driver and clean up
     def close
+      stop_recording
       _stop_reader_thread
 
       # Kill the process if still running

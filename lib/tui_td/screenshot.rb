@@ -215,6 +215,19 @@ module TUITD
     end
 
     def render(output_path)
+      image = build_image
+      image.save(output_path)
+      output_path
+    end
+
+    # Return the rendered PNG as a binary string (for in-memory use, e.g. video recording).
+    def to_blob
+      build_image.to_blob
+    end
+
+    private
+
+    def build_image
       width = @cols * CELL_W
       height = @rows * CELL_H
       image = ChunkyPNG::Image.new(width, height, ChunkyPNG::Color::BLACK)
@@ -230,12 +243,8 @@ module TUITD
       end
 
       draw_cursor(image)
-
-      image.save(output_path)
-      output_path
+      image
     end
-
-    private
 
     def render_cell(image, ri, ci, cell)
       char = cell[:char] || cell["char"] || " "

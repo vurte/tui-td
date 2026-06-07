@@ -1,0 +1,17 @@
+{
+  "name": "Video Recording Test",
+  "rows": 10,
+  "cols": 40,
+  "timeout": 10,
+  "steps": [
+    {"start": "echo 'Hello from tui-td recording!' && sleep 0.5 && echo 'Recording works!'"},
+    {"wait_for_text": "Hello"},
+    {"start_recording": "/tmp/tui_td_example_record.mp4", "framerate": 10, "codec": "libx264"},
+    {"assert_recording": true},
+    {"wait_for_text": "Recording works!"},
+    {"assert_text": "Recording works!"},
+    {"stop_recording": true},
+    {"assert_recording": false},
+    {"close": true}
+  ]
+}

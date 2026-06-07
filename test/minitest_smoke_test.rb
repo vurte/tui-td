@@ -116,5 +116,26 @@ class MinitestSmokeTest < Minitest::Test
     driver&.close
     FileUtils.rm_rf("test/snapshots")
   end
+
+  def test_video_recording
+    skip "ffmpeg not available" unless TUITD::VideoRecorder.available?
+
+    path = "/tmp/minitest_record_#{Process.pid}.mp4"
+    driver = TUITD::Driver.new("echo 'Recording test output'", rows: 5, cols: 30, timeout: 5)
+    driver.start
+    driver.wait_for_stable
+
+    assert_record_start(driver, path, framerate: 2)
+    assert_recording(driver)
+    sleep 0.3
+    assert_record_stop(driver)
+    refute_recording(driver)
+
+    assert File.exist?(path), "Video file should exist after recording"
+    assert File.size(path).positive?, "Video file should have content"
+  ensure
+    driver&.close
+    FileUtils.rm_f(path)
+  end
 end
 # rubocop:enable Layout/LineLength

@@ -425,6 +425,52 @@ module TUITD
                 },
               },
               {
+                name: "tui_record_start",
+                description: "Start recording the current TUI session as a video file (requires ffmpeg). Call before interacting with the TUI. Frames are captured via the screenshot pipeline and encoded incrementally.",
+                inputSchema: {
+                  type: "object",
+                  properties: {
+                    path: {
+                      type: "string",
+                      description: "Output file path for the video (e.g., /tmp/session.mp4). Required.",
+                    },
+                    framerate: {
+                      type: "integer",
+                      description: "Frames per second (default: 30).",
+                      default: 30,
+                    },
+                    codec: {
+                      type: "string",
+                      description: "Video codec: libx264, libx265, libvpx-vp9 (default: libx264).",
+                      default: "libx264",
+                    },
+                    quality: {
+                      type: "string",
+                      enum: %w[high medium low],
+                      description: "Quality preset: high (best), medium, low (smaller files). Default: high.",
+                      default: "high",
+                    },
+                  },
+                  required: ["path"],
+                },
+              },
+              {
+                name: "tui_record_stop",
+                description: "Stop video recording and finalize the video file. Returns the output path.",
+                inputSchema: {
+                  type: "object",
+                  properties: {},
+                },
+              },
+              {
+                name: "tui_record_status",
+                description: "Check whether video recording is currently active.",
+                inputSchema: {
+                  type: "object",
+                  properties: {},
+                },
+              },
+              {
                 name: "tui_close",
                 description: "Close the TUI application and clean up the PTY session. Call this when finished.",
                 inputSchema: {
@@ -461,6 +507,9 @@ module TUITD
                  when "tui_annotate_element" then call_tui_annotate_element(args)
                  when "tui_save_snapshot" then call_tui_save_snapshot(args)
                  when "tui_assert_snapshot" then call_tui_assert_snapshot(args)
+                 when "tui_record_start" then call_tui_record_start(args)
+                 when "tui_record_stop" then call_tui_record_stop
+                 when "tui_record_status" then call_tui_record_status
                  when "tui_close" then call_tui_close
                  else
                    return error_response(id, -32_602, "Unknown tool: #{tool_name}")
@@ -780,6 +829,35 @@ module TUITD
           "OK: Snapshot '#{name}' (type: #{type}) matches"
         else
           "MISMATCH: #{result.message}"
+        end
+      end
+
+      def call_tui_record_start(args)
+        ensure_driver!
+        path = args["path"] or return "ERROR: 'path' argument is required"
+        framerate = args["framerate"] || 30
+        codec = args["codec"] || "libx264"
+        quality = args["quality"] || "high"
+
+        safe = safe_path(path, ext: "mp4")
+        @driver.start_recording(safe, framerate: framerate, codec: codec, quality: quality)
+        "OK: Recording started to #{safe} (#{framerate} fps, #{codec})"
+      end
+
+      def call_tui_record_stop
+        ensure_driver!
+        return "No recording in progress" unless @driver.recording?
+
+        path = @driver.stop_recording
+        "OK: Recording saved to #{path}"
+      end
+
+      def call_tui_record_status
+        ensure_driver!
+        if @driver.recording?
+          "Recording is active"
+        else
+          "Not recording"
         end
       end
 
