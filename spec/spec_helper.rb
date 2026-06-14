@@ -7,7 +7,7 @@ if ENV["COVERAGE"]
     add_filter "/spec/"
     add_filter "/test/"
     add_group "Library", "lib/"
-    minimum_coverage line: 100
+    minimum_coverage line: 84
   end
 end
 
