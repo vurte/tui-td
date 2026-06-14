@@ -453,7 +453,7 @@ See `tui-td help minitest` for the full reference.
 
 ## Snapshot Testing
 
-Named, persisted snapshot testing à la Playwright/Jest. First run creates a golden master — subsequent runs compare.
+Named, persisted snapshot testing. First run creates a golden master — subsequent runs compare.
 
 ### RSpec
 

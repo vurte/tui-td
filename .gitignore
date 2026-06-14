@@ -11,3 +11,4 @@ Gemfile.lock
 spec/snapshots/
 coverage/
 injected gems
+.loop-*
