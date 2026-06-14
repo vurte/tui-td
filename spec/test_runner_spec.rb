@@ -731,5 +731,187 @@ RSpec.describe TUITD::TestRunner do
       result = run_plan(plan2)
       expect(result[:passed]).to be true
     end
+
+    it "assert_snapshot detects mismatch" do
+      # Save a snapshot first
+      plan_save = {
+        name: "save",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo original" },
+          { wait_for_stable: true },
+          { snapshot: "mismatch_test" },
+          { close: true },
+        ],
+      }
+      run_plan(plan_save)
+
+      # Then assert against different output
+      plan2 = {
+        name: "assert mismatch",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo different" },
+          { wait_for_stable: true },
+          { assert_snapshot: "mismatch_test" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan2)
+      expect(result[:passed]).to be false
+    end
+
+    it "assert_snapshot updates when UPDATE_SNAPSHOTS=1" do
+      allow(ENV).to receive(:[]).with("UPDATE_SNAPSHOTS").and_return("1")
+      # Reconfigure to pick up both the env mock and the snapshot dir
+      TUITD.configure { |c| c.snapshot_dir = snapshot_dir }
+
+      plan = {
+        name: "update snap",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo update_me" },
+          { wait_for_stable: true },
+          { assert_snapshot: "update_test" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      expect(File).to exist(File.join(snapshot_dir, "update_test.json"))
+    end
+
+    it "snapshot step uses custom type" do
+      plan = {
+        name: "snapshot html",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo html_snap" },
+          { wait_for_stable: true },
+          { snapshot: "html_snap_test", type: "html" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      expect(File).to exist(File.join(snapshot_dir, "html_snap_test.html"))
+    end
+  end
+
+  describe "recording steps" do
+    it "start_recording starts video capture" do
+      skip "ffmpeg not available" unless TUITD::VideoRecorder.available?
+
+      plan = {
+        name: "recording test",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo recording_test" },
+          { wait_for_stable: true },
+          { start_recording: "/tmp/tui_td_json_rec_test.mp4" },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      FileUtils.rm_f("/tmp/tui_td_json_rec_test.mp4")
+    end
+
+    it "start_recording and stop_recording workflow" do
+      skip "ffmpeg not available" unless TUITD::VideoRecorder.available?
+
+      plan = {
+        name: "rec stop test",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo recording" },
+          { wait_for_stable: true },
+          { start_recording: "/tmp/tui_td_json_rec_stop.mp4", framerate: 2 },
+          { stop_recording: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      FileUtils.rm_f("/tmp/tui_td_json_rec_stop.mp4")
+    end
+
+    it "stop_recording fails when not recording" do
+      plan = {
+        name: "stop without rec",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo no_rec" },
+          { wait_for_stable: true },
+          { stop_recording: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+    end
+
+    it "assert_recording checks recording state" do
+      skip "ffmpeg not available" unless TUITD::VideoRecorder.available?
+
+      plan = {
+        name: "assert rec test",
+        rows: 3,
+        cols: 20,
+        steps: [
+          { start: "echo assert_rec" },
+          { wait_for_stable: true },
+          { assert_recording: false },
+          { start_recording: "/tmp/tui_td_json_assert_rec.mp4", framerate: 2 },
+          { assert_recording: true },
+          { stop_recording: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:passed]).to be true
+      FileUtils.rm_f("/tmp/tui_td_json_assert_rec.mp4")
+    end
+  end
+
+  describe "assert_style step" do
+    it "asserts cell style attributes" do
+      plan = {
+        name: "style test",
+        rows: 3,
+        cols: 30,
+        steps: [
+          { start: "echo hello" },
+          { wait_for_stable: true },
+          { assert_style: [0, 0], bold: false },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be true
+    end
+
+    it "fails assert_style when style does not match" do
+      plan = {
+        name: "style fail",
+        rows: 3,
+        cols: 30,
+        steps: [
+          { start: "echo hello" },
+          { wait_for_stable: true },
+          { assert_style: [0, 0], bold: true },
+          { close: true },
+        ],
+      }
+      result = run_plan(plan)
+      expect(result[:results][2][:passed]).to be false
+    end
   end
 end

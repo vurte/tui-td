@@ -9,19 +9,19 @@ end
 # The convenience method below reopens the module after requires, intentional for bootstrapping.
 
 require_relative "tui_td/version"
-require_relative "tui_td/driver"
-require_relative "tui_td/ansi_parser"
-require_relative "tui_td/ansi_utils"
-require_relative "tui_td/state"
-require_relative "tui_td/configuration"
-require_relative "tui_td/snapshot"
-require_relative "tui_td/screenshot"
-require_relative "tui_td/video_recorder"
-require_relative "tui_td/html_renderer"
-require_relative "tui_td/test_runner"
-require_relative "tui_td/selector"
-require_relative "tui_td/mcp/server"
-require_relative "tui_td/cli"
+require "tui_td/driver"
+require "tui_td/ansi_parser"
+require "tui_td/ansi_utils"
+require "tui_td/state"
+require "tui_td/configuration"
+require "tui_td/snapshot"
+require "tui_td/screenshot"
+require "tui_td/video_recorder"
+require "tui_td/html_renderer"
+require "tui_td/test_runner"
+require "tui_td/selector"
+require "tui_td/mcp/server"
+require "tui_td/cli"
 
 module TUITD
   # Convenience method: start a TUI driver, capture initial state

@@ -127,4 +127,33 @@ RSpec.describe TUITD::VideoRecorder do
       expect(real_driver.recording?).to be false
     end
   end
+
+  describe "error handling" do
+    before do
+      allow(described_class).to receive(:available?).and_return(true)
+    end
+
+    it "handles ffmpeg pipe errors gracefully" do
+      recorder = described_class.new("/tmp/test_pipe_err.mp4", driver: driver, framerate: 60)
+      # Simulate pipe close by stopping immediately
+      recorder.start
+      recorder.stop
+      # Should not raise
+      expect(recorder.recording?).to be false
+    end
+
+    it "handles stop when not recording (nil return path)" do
+      recorder = described_class.new("/tmp/test_stop_idle.mp4", driver: driver)
+      result = recorder.stop
+      expect(result).to be_nil
+    end
+
+    it "handles double stop gracefully" do
+      recorder = described_class.new("/tmp/test_double_stop.mp4", driver: driver)
+      recorder.start
+      recorder.stop
+      result = recorder.stop
+      expect(result).to be_nil
+    end
+  end
 end

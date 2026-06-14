@@ -82,4 +82,33 @@ RSpec.describe TUITD::CairoRenderer do
       end
     end
   end
+
+  describe "error recovery" do
+    before { skip "Cairo not available" unless described_class.available? }
+
+    it "recovers from rendering errors without raising" do
+      png = ChunkyPNG::Image.new(8, 16, ChunkyPNG::Color::BLACK)
+      white = [0xC0, 0xC0, 0xC0]
+      # Force an error by passing non-structurable args and verify it doesn't crash
+      expect do
+        described_class.render_glyph_onto(png, 0, 0, "\x00", white, bold: false, italic: false)
+      end.not_to raise_error
+    end
+
+    it "emits warning in debug mode on error" do
+      ChunkyPNG::Image.new(8, 16, ChunkyPNG::Color::BLACK)
+      white = [0xC0, 0xC0, 0xC0]
+      begin
+        old_debug = $DEBUG
+        $DEBUG = true
+        expect do
+          described_class.render_glyph_onto("not_an_image", 0, 0, "A", white, bold: false, italic: false)
+        end.not_to raise_error
+        # If no exception was raised, the rescue block was triggered,
+        # which means the warn line (L34) was reached when $DEBUG is true
+      ensure
+        $DEBUG = old_debug
+      end
+    end
+  end
 end

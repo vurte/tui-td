@@ -218,25 +218,63 @@ RSpec.describe TUITD::HtmlRenderer do
       expect(html).to include("cursor-hidden")
     end
 
-    it "renders block, underline and bar cursors" do
-      # Test block cursor
-      state_block = {
+    it "renders all cursor styles (block, underline, bar)" do
+      # style 0 or 1: blinking block
+      state_s0 = {
         size: { rows: 1, cols: 1 },
-        cursor: { row: 0, col: 0, style: 2 }, # steady block
+        cursor: { row: 0, col: 0, style: 1 },
         rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
       }
-      html_block = described_class.new(state_block).to_html
-      expect(html_block).to include("cursor-block")
-      expect(html_block).not_to include("cursor-block blink")
+      html_s0 = described_class.new(state_s0).to_html
+      expect(html_s0).to include("cursor-block blink")
 
-      # Test underline cursor
-      state_ul = {
+      # style 2: steady block
+      state_s2 = {
         size: { rows: 1, cols: 1 },
-        cursor: { row: 0, col: 0, style: 3 }, # blinking underline
+        cursor: { row: 0, col: 0, style: 2 },
         rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
       }
-      html_ul = described_class.new(state_ul).to_html
-      expect(html_ul).to include("cursor-underline blink")
+      html_s2 = described_class.new(state_s2).to_html
+      expect(html_s2).to include("cursor-block")
+      expect(html_s2).not_to include("cursor-block blink")
+
+      # style 3: blinking underline
+      state_s3 = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 3 },
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
+      }
+      html_s3 = described_class.new(state_s3).to_html
+      expect(html_s3).to include("cursor-underline blink")
+
+      # style 4: steady underline
+      state_s4 = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 4 },
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
+      }
+      html_s4 = described_class.new(state_s4).to_html
+      expect(html_s4).to include("cursor-underline")
+      expect(html_s4).not_to include("cursor-underline blink")
+
+      # style 5: blinking bar
+      state_s5 = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 5 },
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
+      }
+      html_s5 = described_class.new(state_s5).to_html
+      expect(html_s5).to include("cursor-bar blink")
+
+      # style 6: steady bar
+      state_s6 = {
+        size: { rows: 1, cols: 1 },
+        cursor: { row: 0, col: 0, style: 6 },
+        rows: [[{ char: "A", fg: "default", bg: "default", bold: false, italic: false, underline: false }]],
+      }
+      html_s6 = described_class.new(state_s6).to_html
+      expect(html_s6).to include("cursor-bar")
+      expect(html_s6).not_to include("cursor-bar blink")
     end
   end
 

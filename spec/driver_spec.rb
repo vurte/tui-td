@@ -325,6 +325,11 @@ RSpec.describe TUITD::Driver do
       # On some systems, the PTY raises when the child exits with non-zero
       driver&.close
     end
+
+    it "returns nil when @wait_thr is nil" do
+      driver = described_class.new("true")
+      expect(driver.exitstatus).to be_nil
+    end
   end
 
   describe "#raw_output" do
@@ -490,6 +495,40 @@ RSpec.describe TUITD::Driver do
       expect { driver.start }.not_to raise_error
     ensure
       driver.close
+    end
+  end
+
+  describe "DSR (Device Status Report) handling" do
+    it "responds to DSR escape sequence" do
+      driver = described_class.new("cat", rows: 10, cols: 40, timeout: 5)
+      driver.start
+      sleep 0.2 # Let cat start
+      # Send a DSR escape via the process output - since we read output,
+      # we write directly to the PTY stdin and cat will echo it back
+      driver.send("\e[6n")
+      sleep 0.3 # Wait for the response
+      # The DSR should have been handled — verify no crash
+      state = driver.state_data
+      expect(state).to be_a(Hash)
+      expect(state).to have_key(:rows)
+    rescue Errno::EIO
+      # PTY closed - expected when cat exits
+    ensure
+      driver&.close
+    end
+  end
+
+  describe "internal methods" do
+    it "parse_grid_snapshot returns grid rows" do
+      driver = described_class.new("sleep 0.5 && echo hello", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      sleep 0.1
+      grid = driver.__send__(:parse_grid_snapshot)
+      expect(grid).to be_an(Array)
+      expect(grid).not_to be_empty
+      expect(grid[0]).to be_an(Array)
+    ensure
+      driver&.close
     end
   end
 end

@@ -1,5 +1,16 @@
 # frozen_string_literal: true
 
+if ENV["COVERAGE"]
+  require "simplecov"
+  SimpleCov.start do
+    enable_coverage :line
+    add_filter "/spec/"
+    add_filter "/test/"
+    add_group "Library", "lib/"
+    minimum_coverage line: 100
+  end
+end
+
 require "tui_td"
 require "rspec"
 

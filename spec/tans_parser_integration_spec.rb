@@ -26,5 +26,35 @@ RSpec.describe TUITD do
       expect(TUITD::ANSIUtils::DEFAULT_FG).to eq TansParser::ANSIUtils::DEFAULT_FG
       expect(TUITD::ANSIUtils::DEFAULT_BG).to eq TansParser::ANSIUtils::DEFAULT_BG
     end
+
+    it "TUITD::Selector delegates to TansParser::Selector" do
+      state = TUITD::State.new({
+                                 size: { rows: 3, cols: 20 },
+                                 rows: 3.times.map do
+                                   20.times.map do
+                                     { char: " ", fg: "default", bg: "default", bold: false, italic: false,
+                                       underline: false, }
+                                   end
+                                 end,
+                               })
+      selector = TUITD::Selector.new(state)
+      expect(selector).to be_a TansParser::Selector
+      elements = selector.get_by_role(:button)
+      expect(elements).to be_an(Array)
+    end
+
+    it "TUITD::Element is TansParser::Element" do
+      expect(TUITD::Element).to equal(TansParser::Element)
+    end
+
+    it "TUITD.drive convenience method starts a driver" do
+      driver = described_class.drive("echo hello", rows: 5, cols: 30, timeout: 5)
+      expect(driver).to be_a TUITD::Driver
+      driver.wait_for_exit
+      state = driver.state
+      expect(state[:rows].flatten.map { |c| c[:char] }.join).to include("hello")
+    ensure
+      driver&.close
+    end
   end
 end

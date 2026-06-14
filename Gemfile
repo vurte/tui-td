@@ -17,3 +17,5 @@ gem "tans-parser", "~> 0.1"
 
 gem "bundler-audit", "~> 0.9"
 gem "reek", "~> 6.3"
+
+gem "simplecov", "~> 0.22.0", group: :development

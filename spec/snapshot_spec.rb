@@ -198,5 +198,88 @@ RSpec.describe TUITD::Snapshot do
       snap = described_class.new("missing", type: :text, snapshot_dir: snapshot_dir)
       expect(snap.exists?).to be false
     end
+
+    it "returns true for :all type only when all formats exist" do
+      snap = described_class.new("all_exist", type: :all, snapshot_dir: snapshot_dir)
+      expect(snap.exists?).to be false
+      # Save only json — still false because png and html missing
+      snap.save(state_data)
+      expect(snap.exists?).to be true
+    end
+
+    it "returns false for :all type when one format missing" do
+      snap = described_class.new("all_partial", type: :all, snapshot_dir: snapshot_dir)
+      # Manually create only json, missing png/html
+      File.write(snap.path(".json"), "{}")
+      expect(snap.exists?).to be false
+    end
+  end
+
+  describe "#compare edge cases" do
+    it "handles JSON parse error in saved snapshot" do
+      snap = described_class.new("corrupt", type: :text, snapshot_dir: snapshot_dir)
+      File.write(snap.path(".json"), "NOT VALID JSON!!!")
+      result = snap.compare(state_data)
+      expect(result).not_to be_passed
+      expect(result.message).to include("Failed to parse snapshot JSON")
+    end
+
+    it "handles normalize with string-keyed state data" do
+      snap = described_class.new("raw_hash", type: :text, snapshot_dir: snapshot_dir)
+      raw_data = { size: { rows: 1, cols: 1 },
+                   rows: [[{ char: "X", fg: "default", bg: "default", bold: false, italic: false,
+                             underline: false, }]], }
+      snap.save(raw_data)
+      result = snap.compare(raw_data)
+      expect(result).to be_passed
+    end
+
+    it "handles compare with region as Array" do
+      snap = described_class.new("arr_region", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      modified = Marshal.load(Marshal.dump(state_data))
+      modified[:rows][0][0][:char] = "Z"
+      result = snap.compare(modified, region: [0])
+      expect(result).not_to be_passed
+      expect(result.diff_count).to eq(1)
+    end
+
+    it "handles png comparison mismatch" do
+      snap = described_class.new("png_mismatch", type: :png, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      # Modify state to produce different png
+      modified = Marshal.load(Marshal.dump(state_data))
+      modified[:rows][0][0][:fg] = "red"
+      result = snap.compare(modified)
+      expect(result).not_to be_passed
+      expect(result.message).to include("does not match")
+    end
+
+    it "handles html comparison mismatch" do
+      snap = described_class.new("html_mismatch", type: :html, snapshot_dir: snapshot_dir)
+      snap.save(state_data)
+      modified = Marshal.load(Marshal.dump(state_data))
+      modified[:rows][0][0][:char] = "Z"
+      result = snap.compare(modified)
+      expect(result).not_to be_passed
+      expect(result.message).to include("does not match")
+    end
+
+    it "handles normalize with a state-like object (responds to grid/rows)" do
+      snap = described_class.new("state_obj", type: :text, snapshot_dir: snapshot_dir)
+      obj = double("state", grid: state_data[:rows], rows: state_data[:size][:rows],
+                            cols: state_data[:size][:cols], cursor: { row: 0, col: 0 },)
+      snap.save(obj)
+      expect(File).to exist(snap.path(".json"))
+      result = snap.compare(obj)
+      expect(result).to be_passed
+    end
+
+    it "handles normalize fallback for non-hash non-state objects" do
+      snap = described_class.new("fallback_obj", type: :text, snapshot_dir: snapshot_dir)
+      snap.save(state_data) # Create valid snapshot file
+      weird_obj = Object.new
+      expect { snap.compare(weird_obj) }.to raise_error(NoMethodError)
+    end
   end
 end
