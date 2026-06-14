@@ -542,7 +542,23 @@ module TUITD
                 text: "TIMEOUT: #{e.message}",
               },
             ],
-            isError: false,
+            isError: true,
+            _meta: { error_code: "TIMEOUT", hint: "Increase timeout or check if expected text/element exists" },
+          },
+        }
+      rescue TUITD::Error => e
+        {
+          jsonrpc: "2.0",
+          id: id,
+          result: {
+            content: [
+              {
+                type: "text",
+                text: "DRIVER_ERROR: #{e.message}",
+              },
+            ],
+            isError: true,
+            _meta: { error_code: "DRIVER_ERROR", hint: "Check process state with tui_exit_status" },
           },
         }
       rescue StandardError => e
@@ -553,10 +569,11 @@ module TUITD
             content: [
               {
                 type: "text",
-                text: "ERROR: #{e.class}: #{e.message}",
+                text: "INTERNAL_ERROR: #{e.class}: #{e.message}",
               },
             ],
             isError: true,
+            _meta: { error_code: "INTERNAL", hint: "Unexpected error, check server logs" },
           },
         }
       end
@@ -725,7 +742,16 @@ module TUITD
           desc += " min_confidence=#{min_confidence}" if min_confidence
           "No elements found for #{desc}"
         else
-          lines = ["Found #{elements.size} element(s):"]
+          # Confidence summary for AI agents
+          confidences = elements.map(&:confidence).compact
+          conf_line = if confidences.any?
+                        avg = confidences.sum / confidences.size.to_f
+                        "  Confidence: avg=#{format("%.2f", avg)}, min=#{format("%.2f", confidences.min)}, max=#{format("%.2f", confidences.max)}"
+                      else
+                        ""
+                      end
+
+          lines = ["Found #{elements.size} element(s):", conf_line, ""].reject(&:empty?)
           elements.each do |el|
             parts = ["  :#{el.role}"]
             parts << el.text.inspect if el.text

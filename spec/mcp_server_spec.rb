@@ -598,4 +598,34 @@ RSpec.describe TUITD::MCP::Server do
       expect { server.send(:ensure_driver!) }.to raise_error(TUITD::Error, /No TUI session/)
     end
   end
+
+  describe "error response format" do
+    it "returns structured error with _meta for timeout" do
+      server.send(:call_tui_start, { "command" => "echo hello", "timeout" => 1 })
+      response = server.send(:handle_tools_call,
+                             { "name" => "tui_wait_for_text", "arguments" => { "text" => "NEVER_APPEARS" } }, 1,)
+      content = response.dig(:result, :content, 0, :text) || ""
+      expect(content).to include("TIMEOUT")
+      expect(response.dig(:result, :_meta, :error_code)).to eq("TIMEOUT")
+    end
+
+    it "returns structured error with _meta for driver error" do
+      # Calling send without start should give driver error
+      response = server.send(:handle_tools_call, { "name" => "tui_send", "arguments" => { "text" => "x" } }, 1)
+      content = response.dig(:result, :content, 0, :text) || ""
+      meta = response.dig(:result, :_meta) || {}
+      expect(content).to match(/DRIVER_ERROR/)
+      expect(meta[:error_code]).to eq("DRIVER_ERROR")
+    end
+  end
+
+  describe "tui_find_elements confidence summary" do
+    it "includes confidence summary when elements have confidence" do
+      server.send(:call_tui_start, { "command" => "echo '[ OK ]  [Cancel]'", "rows" => 5, "cols" => 40 })
+      server.send(:call_tui_wait_for_stable, {})
+      result = server.send(:call_tui_find_elements, { "role" => "button" })
+      expect(result).to include("Confidence:")
+      expect(result).to include("avg=")
+    end
+  end
 end
