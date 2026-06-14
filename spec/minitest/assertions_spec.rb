@@ -25,6 +25,10 @@ RSpec.describe TUITD::Minitest::Assertions do
         @failures << msg
         raise Minitest::Assertion, msg || "Failed"
       end
+
+      def refute(test, msg = nil)
+        assert(!test, msg)
+      end
     end.new
   end
 
@@ -243,6 +247,211 @@ RSpec.describe TUITD::Minitest::Assertions do
       expect { host.assert_button(driver, "OK") }.not_to raise_error
     ensure
       driver&.close
+    end
+
+    it "assert_button with min_confidence when given a Driver" do
+      driver = TUITD::Driver.new("echo '[ OK ]'", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      expect { host.assert_button(driver, "OK", min_confidence: 0.5) }.not_to raise_error
+    ensure
+      driver&.close
+    end
+
+    it "assert_button with too-high min_confidence fails" do
+      driver = TUITD::Driver.new("echo '[ OK ]'", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      expect { host.assert_button(driver, "OK", min_confidence: 0.99) }.to raise_error(Minitest::Assertion)
+    ensure
+      driver&.close
+    end
+  end
+
+  describe "refute_regex" do
+    it "passes when pattern does not match" do
+      grid = make_grid(1, 20)
+      "Hello World".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.refute_regex(state, /Error/) }.not_to raise_error
+    end
+
+    it "passes when string pattern does not match" do
+      grid = make_grid(1, 20)
+      "Hello".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.refute_regex(state, "Error") }.not_to raise_error
+    end
+
+    it "fails when pattern matches" do
+      grid = make_grid(1, 20)
+      "Error: timeout".chars.each_with_index { |c, i| grid[0][i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.refute_regex(state, /Error/) }.to raise_error(Minitest::Assertion)
+    end
+  end
+
+  describe "assert_dialog with min_confidence" do
+    it "passes with min_confidence" do
+      grid = make_grid(4, 20)
+      %w[┌──┐ │OK│ └──┘].each_with_index do |line, i|
+        line.chars.each_with_index { |c, j| grid[i + 1][5 + j][:char] = c }
+      end
+      state = make_state(grid: grid)
+      expect { host.assert_dialog(state, min_confidence: 0.5) }.not_to raise_error
+    end
+  end
+
+  describe "refute_dialog" do
+    it "passes when no dialog exists" do
+      state = make_state
+      expect { host.refute_dialog(state) }.not_to raise_error
+    end
+
+    it "fails when dialog exists" do
+      grid = make_grid(4, 20)
+      %w[┌──┐ │OK│ └──┘].each_with_index do |line, i|
+        line.chars.each_with_index { |c, j| grid[i + 1][5 + j][:char] = c }
+      end
+      state = make_state(grid: grid)
+      expect { host.refute_dialog(state) }.to raise_error(Minitest::Assertion)
+    end
+  end
+
+  describe "assert_role with filters" do
+    it "passes with min_confidence" do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.assert_role(state, :button, text: "OK", min_confidence: 0.5) }.not_to raise_error
+    end
+
+    it "fails with too-high min_confidence" do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.assert_role(state, :button, text: "OK", min_confidence: 0.99) }.to raise_error(Minitest::Assertion)
+    end
+  end
+
+  describe "assert_input with text" do
+    it "passes when input with specific text exists" do
+      grid = make_grid(3, 30)
+      "Input: [________]".chars.each_with_index { |c, i| grid[1][i][:char] = c }
+      state = make_state(grid: grid)
+      # Without text filter, any input passes
+      expect { host.assert_input(state) }.not_to raise_error
+      # With text filter that doesn't match, it fails (but covers the code path)
+      expect { host.assert_input(state, "Nonexistent") }.to raise_error(Minitest::Assertion)
+    end
+  end
+
+  describe "assert_progress_bar with text" do
+    it "passes when progress bar exists (without text filter)" do
+      grid = make_grid(3, 30)
+      "[####     ] 40%".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      expect { host.assert_progress_bar(state) }.not_to raise_error
+    end
+
+    it "fails with specific text that does not match" do
+      grid = make_grid(3, 30)
+      "[####     ]".chars.each_with_index { |c, i| grid[1][5 + i][:char] = c }
+      state = make_state(grid: grid)
+      # with text filter, covers the code path
+      expect { host.assert_progress_bar(state, "Nonexistent") }.to raise_error(Minitest::Assertion)
+    end
+  end
+
+  describe "video recording assertions" do
+    let(:recording_driver) do
+      double("Driver",
+             start_recording: true,
+             stop_recording: "/tmp/test.mp4",
+             recording?: true,)
+    end
+
+    let(:non_recording_driver) do
+      double("Driver",
+             start_recording: false,
+             stop_recording: nil,
+             recording?: false,)
+    end
+
+    it "assert_record_start raises error for non-Driver" do
+      expect { host.assert_record_start("not a driver", "/tmp/v.mp4") }
+        .to raise_error(ArgumentError, /requires a Driver/)
+    end
+
+    it "assert_record_start succeeds with Driver" do
+      expect { host.assert_record_start(recording_driver, "/tmp/v.mp4") }.not_to raise_error
+    end
+
+    it "assert_record_start fails when recording fails to start" do
+      expect { host.assert_record_start(non_recording_driver, "/tmp/v.mp4") }
+        .to raise_error(Minitest::Assertion, /failed/i)
+    end
+
+    it "assert_record_stop raises error for non-Driver" do
+      expect { host.assert_record_stop("not a driver") }
+        .to raise_error(ArgumentError, /requires a Driver/)
+    end
+
+    it "assert_record_stop succeeds with Driver" do
+      expect { host.assert_record_stop(recording_driver) }.not_to raise_error
+    end
+
+    it "assert_record_stop fails when no recording in progress" do
+      expect { host.assert_record_stop(non_recording_driver) }
+        .to raise_error(Minitest::Assertion, /no recording/i)
+    end
+
+    it "assert_recording raises error for non-Driver" do
+      expect { host.assert_recording("not a driver") }
+        .to raise_error(ArgumentError, /requires a Driver/)
+    end
+
+    it "assert_recording passes when recording is active" do
+      expect { host.assert_recording(recording_driver) }.not_to raise_error
+    end
+
+    it "assert_recording fails when recording is not active" do
+      expect { host.assert_recording(non_recording_driver) }
+        .to raise_error(Minitest::Assertion, /expected recording/i)
+    end
+
+    it "refute_recording raises error for non-Driver" do
+      expect { host.refute_recording("not a driver") }
+        .to raise_error(ArgumentError, /requires a Driver/)
+    end
+
+    it "refute_recording passes when recording is not active" do
+      expect { host.refute_recording(non_recording_driver) }.not_to raise_error
+    end
+
+    it "refute_recording fails when recording is active" do
+      expect { host.refute_recording(recording_driver) }
+        .to raise_error(Minitest::Assertion, /expected recording NOT/i)
+    end
+  end
+
+  describe "assert_snapshot with wait and to_h" do
+    it "waits for stable when wait:true on a Driver" do
+      driver = TUITD::Driver.new("echo stable", rows: 3, cols: 20, timeout: 5)
+      driver.start
+      snap = TUITD::Snapshot.new("wait_test", type: :text, snapshot_dir: Dir.mktmpdir)
+      snap.save(driver.state_data) # pre-create snapshot
+      expect { host.assert_snapshot(driver, "wait_test", wait: true) }.not_to raise_error
+    ensure
+      driver&.close
+    end
+
+    it "works with objects that respond to to_h" do
+      cell = { char: "X", fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      hash_obj = double("hash_obj",
+                        to_h: { size: { rows: 1, cols: 1 },
+                                rows: [[cell]], cursor: { row: 0, col: 0 }, },)
+      snap = TUITD::Snapshot.new("to_h_test", type: :text, snapshot_dir: Dir.mktmpdir)
+      snap.save(hash_obj.to_h)
+      expect { host.assert_snapshot(hash_obj, "to_h_test") }.not_to raise_error
     end
   end
 end
