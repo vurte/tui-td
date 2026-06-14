@@ -722,4 +722,356 @@ RSpec.describe TUITD::Matchers do
       expect(el.confidence).to be <= 1.0
     end
   end
+
+  describe "matcher metadata (description / failure_message / failure_message_when_negated)" do
+    let(:empty_state) { make_state }
+
+    # Create a state that has a button [ OK ]
+    let(:button_state) do
+      grid = make_grid(3, 20)
+      "[ OK ]".chars.each_with_index do |c, i|
+        grid[1][2 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      make_state(grid: grid)
+    end
+
+    # --- description coverage ---
+
+    it "have_button description" do
+      expect(have_button("OK").description).to include("have button")
+      expect(have_button("OK", min_confidence: 0.8).description).to include("min_confidence")
+    end
+
+    it "have_dialog description" do
+      expect(have_dialog.description).to include("have a dialog")
+      expect(have_dialog(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_checkbox description" do
+      expect(have_checkbox("Opt").description).to include("have checkbox")
+      expect(have_checkbox("Opt").checked.description).to include("checked")
+    end
+
+    it "have_role description" do
+      expect(have_role(:button, text: "OK").description).to include("have role :button")
+      expect(have_role(:button, checked: true).description).to include("checked")
+      expect(have_role(:button, disabled: true).description).to include("disabled")
+      expect(have_role(:button, min_confidence: 0.8).description).to include("min_confidence")
+    end
+
+    it "have_input description" do
+      expect(have_input.description).to include("input")
+      expect(have_input("search").description).to include("search")
+      expect(have_input(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_label description" do
+      expect(have_label.description).to include("label")
+      expect(have_label("Name").description).to include("Name")
+      expect(have_label(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_menu description" do
+      expect(have_menu.description).to include("menu")
+      expect(have_menu("File").description).to include("File")
+      expect(have_menu(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_tab description" do
+      expect(have_tab.description).to include("tab")
+      expect(have_tab("Home").description).to include("Home")
+      expect(have_tab(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_statusbar description" do
+      expect(have_statusbar.description).to include("status")
+      expect(have_statusbar("Idle").description).to include("Idle")
+      expect(have_statusbar(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_progress_bar description" do
+      expect(have_progress_bar.description).to include("progress")
+      expect(have_progress_bar("50%").description).to include("50%")
+      expect(have_progress_bar(min_confidence: 0.9).description).to include("min_confidence")
+    end
+
+    it "have_style description" do
+      expect(have_style.at(0, 0).with(bold: true).description).to include("style")
+    end
+
+    it "have_exit_status description" do
+      expect(have_exit_status(0).description).to include("exit status 0")
+    end
+
+    it "have_recorded_video description" do
+      expect(have_recorded_video("/tmp/v.mp4").description).to include("/tmp/v.mp4")
+    end
+
+    it "be_recording description" do
+      expect(be_recording.description).to include("recording")
+    end
+
+    # --- failure_message coverage (matcher fails on empty state) ---
+
+    it "have_button failure_message" do
+      matcher = have_button("OK")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("button")
+    end
+
+    it "have_dialog failure_message" do
+      matcher = have_dialog
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("dialog")
+    end
+
+    it "have_checkbox failure_message" do
+      matcher = have_checkbox("Opt")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("checkbox")
+    end
+
+    it "have_role failure_message" do
+      matcher = have_role(:button, text: "OK")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include(":button")
+    end
+
+    it "have_input failure_message" do
+      matcher = have_input("search")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("input")
+    end
+
+    it "have_label failure_message" do
+      matcher = have_label("Name")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("label")
+    end
+
+    it "have_menu failure_message" do
+      matcher = have_menu("File")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("menu")
+    end
+
+    it "have_tab failure_message" do
+      matcher = have_tab("Home")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("tab")
+    end
+
+    it "have_statusbar failure_message" do
+      matcher = have_statusbar("Idle")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("status")
+    end
+
+    it "have_progress_bar failure_message" do
+      matcher = have_progress_bar("50%")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("progress")
+    end
+
+    it "have_style failure_message" do
+      matcher = have_style.at(0, 0).with(bold: true)
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("style")
+    end
+
+    it "have_exit_status failure_message" do
+      fake_driver = double("driver", exitstatus: 1)
+      matcher = have_exit_status(0)
+      matcher.matches?(fake_driver)
+      expect(matcher.failure_message).to include("exit status")
+    end
+
+    it "be_recording failure_message" do
+      fake_driver = double("driver", recording?: false)
+      matcher = be_recording
+      matcher.matches?(fake_driver)
+      expect(matcher.failure_message).to include("recording")
+    end
+
+    it "have_recorded_video failure_message" do
+      matcher = have_recorded_video("/tmp/v.mp4")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message).to include("/tmp/v.mp4")
+    end
+
+    # --- failure_message_when_negated coverage (negated matcher fails when state HAS the element) ---
+
+    it "have_button failure_message_when_negated" do
+      matcher = have_button("OK")
+      matcher.matches?(button_state) # succeeds — so negated would fail
+      expect(matcher.failure_message_when_negated).to include("button")
+    end
+
+    it "have_dialog failure_message_when_negated" do
+      grid = make_grid(5, 20)
+      "┌──────────┐".chars.each_with_index do |c, i|
+        grid[1][5 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      "│  Hello   │".chars.each_with_index do |c, i|
+        grid[2][5 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      "└──────────┘".chars.each_with_index do |c, i|
+        grid[3][5 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid, rows: 5)
+      matcher = have_dialog
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("dialog")
+    end
+
+    it "have_checkbox failure_message_when_negated" do
+      grid = make_grid(3, 20)
+      "[X] OK".chars.each_with_index do |c, i|
+        grid[1][2 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_checkbox("OK")
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("checkbox")
+    end
+
+    it "have_role failure_message_when_negated" do
+      matcher = have_role(:button, text: "OK")
+      matcher.matches?(button_state)
+      expect(matcher.failure_message_when_negated).to include("button")
+    end
+
+    it "have_input failure_message_when_negated" do
+      grid = make_grid(3, 20)
+      "[_________]".chars.each_with_index do |c, i|
+        grid[1][2 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_input
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("input")
+    end
+
+    it "have_label failure_message_when_negated" do
+      grid = make_grid(3, 20)
+      "Name:".chars.each_with_index do |c, i|
+        grid[1][2 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_label("Name")
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("label")
+    end
+
+    it "have_menu failure_message_when_negated" do
+      grid = make_grid(3, 40)
+      "File    Edit    View".chars.each_with_index do |c, i|
+        grid[0][0 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_menu
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("menu")
+    end
+
+    it "have_tab failure_message_when_negated" do
+      grid = make_grid(3, 40)
+      "[Tab1] [Tab2] [Tab3]".chars.each_with_index do |c, i|
+        grid[0][0 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_tab
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("tab")
+    end
+
+    it "have_statusbar failure_message_when_negated" do
+      grid = make_grid(3, 20)
+      "Status: idle".chars.each_with_index do |c, i|
+        grid[2][0 + i] = { char: c, fg: "default", bg: "blue", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_statusbar
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("status")
+    end
+
+    it "have_progress_bar failure_message_when_negated" do
+      grid = make_grid(3, 30)
+      "[##########         ]".chars.each_with_index do |c, i|
+        grid[1][2 + i] = { char: c, fg: "default", bg: "default", bold: false, italic: false, underline: false }
+      end
+      state = make_state(grid: grid)
+      matcher = have_progress_bar
+      matcher.matches?(state)
+      expect(matcher.failure_message_when_negated).to include("progress")
+    end
+
+    it "have_style failure_message_when_negated" do
+      matcher = have_style.at(0, 0).with(bold: false)
+      matcher.matches?(empty_state) # empty state has bold: false, so this succeeds
+      expect(matcher.failure_message_when_negated).to include("style")
+    end
+
+    it "have_exit_status failure_message_when_negated" do
+      fake_driver = double("driver", exitstatus: 0)
+      matcher = have_exit_status(0)
+      matcher.matches?(fake_driver) # succeeds — so negated would fail
+      expect(matcher.failure_message_when_negated).to include("exit status")
+    end
+
+    it "be_recording failure_message_when_negated" do
+      fake_driver = double("driver", recording?: true)
+      matcher = be_recording
+      matcher.matches?(fake_driver) # succeeds — so negated would fail
+      expect(matcher.failure_message_when_negated).to include("recording")
+    end
+
+    it "have_recorded_video failure_message_when_negated" do
+      matcher = have_recorded_video("/tmp/v.mp4")
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message_when_negated).to include("/tmp/v.mp4")
+    end
+
+    # --- match_snapshot metadata ---
+
+    it "match_snapshot description with name" do
+      Dir.mktmpdir do |dir|
+        TUITD.configure { |c| c.snapshot_dir = dir }
+        matcher = match_snapshot("my_snap", type: :text)
+        matcher.matches?(empty_state) # sets @snapshot_name
+        expect(matcher.description).to include("my_snap")
+      end
+    end
+
+    it "match_snapshot description without name (state object)" do
+      matcher = match_snapshot(empty_state)
+      matcher.matches?(empty_state)
+      expect(matcher.description).to include("match snapshot")
+    end
+
+    it "match_snapshot failure_message with name" do
+      Dir.mktmpdir do |dir|
+        TUITD.configure { |c| c.snapshot_dir = dir }
+        matcher = match_snapshot("my_snap")
+        matcher.matches?(empty_state)
+        expect(matcher.failure_message).to include("my_snap")
+      end
+    end
+
+    it "match_snapshot failure_message_when_negated with name" do
+      Dir.mktmpdir do |dir|
+        TUITD.configure { |c| c.snapshot_dir = dir }
+        matcher = match_snapshot("my_snap")
+        matcher.matches?(empty_state)
+        expect(matcher.failure_message_when_negated).to include("my_snap")
+      end
+    end
+
+    it "match_snapshot failure_message_when_negated without name" do
+      matcher = match_snapshot(empty_state)
+      matcher.matches?(empty_state)
+      expect(matcher.failure_message_when_negated).to include("snapshot")
+    end
+  end
 end

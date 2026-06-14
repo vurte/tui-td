@@ -450,11 +450,11 @@ module TUITD
     RSpec::Matchers.define :match_snapshot do |ref, type: nil, wait: false, chars_only: nil, ignore_rows: nil, region: nil|
       match do |actual|
         # Normalize type: backward compat for chars_only parameter
-        effective_type = type
-        if effective_type.nil? && !chars_only.nil?
-          effective_type = chars_only ? :text : :full
+        @effective_type = type
+        if @effective_type.nil? && !chars_only.nil?
+          @effective_type = chars_only ? :text : :full
         end
-        effective_type ||= :text
+        @effective_type ||= :text
 
         @snapshot_name = nil
         @diff_result = nil
@@ -462,7 +462,7 @@ module TUITD
         # Legacy path: snapshot_ref is a State object (responds to diff)
         if ref.respond_to?(:diff)
           Matchers.auto_wait(actual) do |s|
-            chars = effective_type == :text
+            chars = @effective_type == :text
             diffs = ref.diff(s, chars_only: chars)
             diffs.select! { |d| Array(region).include?(d[:row]) } if region
             diffs.reject! { |d| Array(ignore_rows).include?(d[:row]) } if ignore_rows
@@ -472,7 +472,7 @@ module TUITD
         else
           # Named snapshot path
           @snapshot_name = ref.to_s
-          snap = Snapshot.new(@snapshot_name, type: effective_type)
+          snap = Snapshot.new(@snapshot_name, type: @effective_type)
 
           # Get state_data from actual
           if wait && actual.respond_to?(:wait_for_stable)
@@ -495,8 +495,8 @@ module TUITD
             true
           elsif !snap.exists?
             snap.save(state_data)
-            @diff_result = TUITD::Snapshot::ComparisonResult.new(passed: true, diff_count: 0, type: effective_type,
-                                                                 message: "Snapshot '#{@snapshot_name}' created (#{effective_type})",)
+            @diff_result = TUITD::Snapshot::ComparisonResult.new(passed: true, diff_count: 0, type: @effective_type,
+                                                                 message: "Snapshot '#{@snapshot_name}' created (#{@effective_type})",)
             true
           else
             @diff_result = snap.compare(state_data, ignore_rows: ignore_rows, region: region)
@@ -507,10 +507,10 @@ module TUITD
 
       description do
         if @snapshot_name
-          "match snapshot #{@snapshot_name.inspect} (type: #{effective_type})"
+          "match snapshot #{@snapshot_name.inspect} (type: #{@effective_type})"
         else
-          desc = "match snapshot"
-          desc << " (chars only)" if effective_type == :text
+          desc = +"match snapshot"
+          desc << " (chars only)" if @effective_type == :text
           desc
         end
       end
