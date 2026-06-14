@@ -531,4 +531,57 @@ RSpec.describe TUITD::Driver do
       driver&.close
     end
   end
+
+  describe "#last_output" do
+    it "returns the last N characters of the output buffer" do
+      driver = described_class.new("echo hello world", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      driver.wait_for_stable
+      output = driver.last_output
+      expect(output).to be_a(String)
+      expect(output.length).to be > 0
+    ensure
+      driver&.close
+    end
+
+    it "respects custom num_chars:" do
+      driver = described_class.new("echo hello world", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      driver.wait_for_stable
+      short = driver.last_output(num_chars: 5)
+      expect(short.length).to be <= 5
+    ensure
+      driver&.close
+    end
+  end
+
+  describe "error messages include context" do
+    it "wait_for_text timeout includes last output snippet" do
+      driver = described_class.new("echo hello", rows: 3, cols: 30, timeout: 1)
+      driver.start
+      expect { driver.wait_for_text("NEVER_APPEARS") }
+        .to raise_error(TUITD::TimeoutError, /Last output/)
+    ensure
+      driver&.close
+    end
+
+    it "wait_for timeout includes last output snippet" do
+      driver = described_class.new("echo hello", rows: 3, cols: 30, timeout: 1)
+      driver.start
+      expect { driver.wait_for { |_s| false } }
+        .to raise_error(TUITD::TimeoutError, /Last output/)
+    ensure
+      driver&.close
+    end
+
+    it "process exit error includes status and last output" do
+      driver = described_class.new("sh -c 'echo hello; exit 2'", rows: 3, cols: 30, timeout: 5)
+      driver.start
+      driver.wait_for_exit
+      expect { driver.send("text") }
+        .to raise_error(TUITD::Error, /status=2/)
+    ensure
+      driver&.close
+    end
+  end
 end

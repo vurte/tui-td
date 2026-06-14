@@ -106,7 +106,12 @@ module TUITD
       deadline = monotonic + (timeout || @timeout)
       loop_count = 0
       loop do
-        raise TimeoutError, "Timeout waiting for predicate" if monotonic > deadline
+        if monotonic > deadline
+          elapsed = (timeout || @timeout).round(1)
+          snippet = last_output_snippet
+          raise TimeoutError, "Timeout after #{elapsed}s waiting for predicate. " \
+                              "Last output: #{snippet}"
+        end
 
         read_available!
         refresh_state!
@@ -124,7 +129,12 @@ module TUITD
       deadline = monotonic + @timeout
       loop_count = 0
       loop do
-        raise TimeoutError, "Timeout waiting for: #{text.inspect}" if monotonic > deadline
+        if monotonic > deadline
+          elapsed = @timeout.round(1)
+          snippet = last_output_snippet
+          raise TimeoutError, "Timeout after #{elapsed}s waiting for text: #{text.inspect}. " \
+                              "Last output: #{snippet}"
+        end
 
         read_available!
         found = @output_mutex.synchronize { @output_buffer.include?(text) }
@@ -144,7 +154,12 @@ module TUITD
       loop_count = 0
 
       loop do
-        raise TimeoutError, "Timeout waiting for stable output" if monotonic > deadline
+        if monotonic > deadline
+          elapsed = @timeout.round(1)
+          snippet = last_output_snippet
+          raise TimeoutError, "Timeout after #{elapsed}s waiting for stable output. " \
+                              "Last output: #{snippet}"
+        end
 
         read_available!
         current_buffer_size = @output_mutex.synchronize { @output_buffer.bytesize }
@@ -328,7 +343,16 @@ module TUITD
 
     def ensure_running!
       raise Error, "Driver not started. Call #start first." if @stdin.nil?
-      raise Error, "Process exited (status: #{@wait_thr&.value&.exitstatus})" unless @wait_thr&.alive?
+
+      return if @wait_thr&.alive?
+
+      status = @wait_thr&.value
+      exitstatus = status&.exitstatus
+      termsig = status&.termsig
+      detail = "status=#{exitstatus}"
+      detail += ", signal=#{termsig}" if termsig
+      snippet = last_output_snippet
+      raise Error, "Process exited (#{detail}). Last output: #{snippet}"
     end
 
     def adaptive_sleep(loop_count)
@@ -400,6 +424,26 @@ module TUITD
     def monotonic
       Process.clock_gettime(Process::CLOCK_MONOTONIC)
     end
+
+    # Return the last N characters of output buffer (useful for diagnostics)
+    def last_output(num_chars: 200)
+      @output_mutex.synchronize { @output_buffer[-num_chars..] || @output_buffer }
+    end
+
+    # Internal: return a compact snippet of the last output for error messages.
+    def last_output_snippet
+      raw = @output_mutex.synchronize { @output_buffer[-300..] || @output_buffer }
+      plain = raw.gsub(/\e\[[0-9;]*[a-zA-Z]/, "") # strip ANSI
+                 .gsub(/[^[:print:]\n\t]/, "") # strip non-printable
+                 .gsub(/\n+/, " | ")                  # collapse newlines
+                 .gsub(/\s+/, " ")                    # collapse whitespace
+                 .strip
+      plain.length > 200 ? "#{plain[0..197]}..." : plain
+    rescue StandardError
+      "(unavailable)"
+    end
+
+    public :last_output
   end
 
   class TimeoutError < Error; end
