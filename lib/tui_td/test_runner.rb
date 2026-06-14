@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
+# rubocop:disable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength, Metrics/ParameterLists, Layout/LineLength
 
 require "json"
 require "shellwords"
@@ -164,35 +164,43 @@ module TUITD
                   end
 
                 when "assert_button"
-                  check_role(driver, :button, value.to_s)
+                  check_role(driver, :button, value.to_s, min_confidence: step[:min_confidence])
 
                 when "assert_dialog"
-                  check_role(driver, :dialog, nil)
+                  check_role(driver, :dialog, nil, min_confidence: step[:min_confidence])
 
                 when "assert_checkbox"
-                  check_role(driver, :checkbox, value.to_s, checked: step[:checked], disabled: step[:disabled])
+                  check_role(driver, :checkbox, value.to_s, checked: step[:checked],
+                                                            disabled: step[:disabled], min_confidence: step[:min_confidence],)
 
                 when "assert_role"
                   role = step[:role]&.to_sym
-                  check_role(driver, role, value.to_s, checked: step[:checked], disabled: step[:disabled])
+                  check_role(driver, role, value.to_s, checked: step[:checked],
+                                                       disabled: step[:disabled], min_confidence: step[:min_confidence],)
 
                 when "assert_input"
-                  check_role(driver, :input, value == true ? nil : value.to_s)
+                  check_role(driver, :input, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "assert_label"
-                  check_role(driver, :label, value == true ? nil : value.to_s)
+                  check_role(driver, :label, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "assert_menu"
-                  check_role(driver, :menu, value == true ? nil : value.to_s)
+                  check_role(driver, :menu, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "assert_tab"
-                  check_role(driver, :tab, value == true ? nil : value.to_s)
+                  check_role(driver, :tab, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "assert_statusbar"
-                  check_role(driver, :statusbar, value == true ? nil : value.to_s)
+                  check_role(driver, :statusbar, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "assert_progress_bar"
-                  check_role(driver, :progress, value == true ? nil : value.to_s)
+                  check_role(driver, :progress, value == true ? nil : value.to_s,
+                             min_confidence: step[:min_confidence],)
 
                 when "snapshot"
                   ensure_driver!(driver)
@@ -305,7 +313,7 @@ module TUITD
 
     private
 
-    def check_role(driver, role, text, checked: nil, disabled: nil)
+    def check_role(driver, role, text, checked: nil, disabled: nil, min_confidence: nil)
       ensure_driver!(driver)
       state = State.new(driver.state_data)
       selector = Selector.new(state)
@@ -316,6 +324,8 @@ module TUITD
       filters[:disabled] = disabled unless disabled.nil?
       elements = selector.get_by_role(role, **filters)
 
+      elements = elements.select { |e| e.confidence && e.confidence >= min_confidence } if min_confidence
+
       action = "assert_#{role}"
       if elements.any?
         count = elements.size
@@ -323,11 +333,19 @@ module TUITD
         desc += " (checked)" if checked == true
         desc += " (unchecked)" if checked == false
         desc += " (disabled)" if disabled == true
-        Result.new(step: action, passed: true, message: "Found #{count} #{desc} element(s)")
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        confidence_info = if min_confidence
+                            confs = elements.map { |e| e.confidence || 0 }.sort
+                            " [#{confs.map { |c| format("%.2f", c) }.join(", ")}]"
+                          else
+                            ""
+                          end
+        Result.new(step: action, passed: true, message: "Found #{count} #{desc} element(s)#{confidence_info}")
       else
         desc = text ? "#{role} with text #{text.inspect}" : role.to_s
         desc += " (checked)" if checked == true
         desc += " (disabled)" if disabled == true
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         Result.new(step: action, passed: false, message: "No #{desc} found")
       end
     end
@@ -436,4 +454,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength
+# rubocop:enable Metrics/MethodLength, Metrics/AbcSize, Metrics/CyclomaticComplexity, Metrics/PerceivedComplexity, Metrics/BlockLength, Metrics/ClassLength, Metrics/ParameterLists, Layout/LineLength

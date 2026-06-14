@@ -635,4 +635,91 @@ RSpec.describe TUITD::Matchers do
       driver.close
     end
   end
+
+  describe "confidence support (tans-parser 0.1.5+)" do
+    # Helper: write text into a grid at a position
+    def write_text(grid, row, col, text, **styles)
+      text.chars.each_with_index do |ch, i|
+        grid[row][col + i] =
+          { char: ch, fg: "default", bg: "default", bold: false, italic: false, underline: false, **styles }
+      end
+    end
+
+    it "have_button filters by min_confidence" do
+      grid = make_grid(3, 20)
+      write_text(grid, 1, 2, "[ OK ]")
+      state = make_state(grid: grid)
+      # Button [ OK ] with [] brackets gets confidence 0.9
+      expect(state).to have_button("OK", min_confidence: 0.8)
+      # But not at 0.95
+      expect(state).not_to have_button("OK", min_confidence: 0.95)
+    end
+
+    it "have_dialog filters by min_confidence" do
+      # Use proper box-drawing characters that tans-parser detects
+      grid = make_grid(5, 20)
+      write_text(grid, 1, 5, "┌──────────┐") # ┌──────────┐
+      write_text(grid, 2, 5, "│  Hello   │") # │  Hello   │
+      write_text(grid, 3, 5, "└──────────┘") # └──────────┘
+      state = make_state(grid: grid, rows: 5)
+      expect(state).to have_dialog(min_confidence: 0.8)
+      expect(state).not_to have_dialog(min_confidence: 0.99)
+    end
+
+    it "have_role with min_confidence filters elements" do
+      grid = make_grid(3, 20)
+      write_text(grid, 1, 2, "[ OK ]")
+      state = make_state(grid: grid)
+      expect(state).to have_role(:button, text: "OK", min_confidence: 0.8)
+      expect(state).not_to have_role(:button, text: "OK", min_confidence: 0.99)
+    end
+
+    it "have_checkbox filters by min_confidence" do
+      grid = make_grid(3, 20)
+      write_text(grid, 1, 2, "[X] OK")
+      state = make_state(grid: grid)
+      # Checkbox with [X] gets confidence 0.9
+      expect(state).to have_checkbox("OK", min_confidence: 0.8)
+      expect(state).not_to have_checkbox("OK", min_confidence: 0.99)
+    end
+
+    it "have_input with min_confidence" do
+      grid = make_grid(3, 20)
+      # Input detected as [____] underscore-filled brackets
+      write_text(grid, 1, 2, "[_________]")
+      state = make_state(grid: grid)
+      expect(state).to have_input(min_confidence: 0.8)
+      expect(state).not_to have_input(min_confidence: 0.99)
+    end
+
+    it "have_statusbar with low confidence is sensitive" do
+      # Statusbar on bottom row with colored background gets confidence 0.9
+      grid = make_grid(3, 20)
+      write_text(grid, 2, 0, "Status: idle", bg: "blue")
+      state = make_state(grid: grid)
+      # Colored statusbar has confidence 0.9
+      expect(state).to have_statusbar(min_confidence: 0.8)
+      expect(state).not_to have_statusbar(min_confidence: 0.95)
+    end
+
+    it "have_progress_bar with min_confidence" do
+      grid = make_grid(3, 30)
+      write_text(grid, 1, 2, "[##########         ]")
+      state = make_state(grid: grid)
+      expect(state).to have_progress_bar(min_confidence: 0.8)
+      expect(state).not_to have_progress_bar(min_confidence: 0.99)
+    end
+
+    it "elements have confidence attribute" do
+      grid = make_grid(3, 20)
+      write_text(grid, 1, 2, "[ OK ]")
+      state = make_state(grid: grid)
+      selector = TUITD::Selector.new(state)
+      el = selector.button(text: "OK")
+      expect(el).not_to be_nil
+      expect(el.confidence).to be_a(Numeric)
+      expect(el.confidence).to be >= 0
+      expect(el.confidence).to be <= 1.0
+    end
+  end
 end

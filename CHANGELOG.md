@@ -1,5 +1,36 @@
 # CHANGELOG
 
+## 0.2.22
+
+### Added
+
+- **tans-parser 0.1.5 integration**: Confidence scoring for UI element detection
+- `Element#confidence` attribute (0.0–1.0) — higher values indicate more reliable detection
+- `Element#confident?` — returns true when confidence ≥ 0.5 or nil
+- RSpec matchers: `min_confidence:` keyword on `have_button`, `have_dialog`,
+  `have_checkbox`, `have_input`, `have_label`, `have_menu`, `have_tab`,
+  `have_statusbar`, `have_progress_bar`, `have_role`
+- JSON test steps: `min_confidence` field on all `assert_*` role steps
+- MCP `tui_find_elements`: `min_confidence` argument and `[conf=...]` in output
+- Minitest assertions: `min_confidence:` keyword on all selector-based assertions
+- Confidence attribute visible in `Element#to_h`
+
+### Changed
+
+- Reduced false positives from tans-parser 0.1.5 (numeric brackets, short progress bars,
+  digit-colon patterns, URL schemes are now excluded)
+- Dialog detection confidence boosted for titled borders (+0.05)
+- Multi-word labels get higher confidence (0.85 vs 0.8)
+- Tab confidence varies by count (≥3 tabs → 0.85, otherwise 0.7)
+- `TestRunner#check_role` includes confidence scores in result messages
+- Minitest assertions pass through `min_confidence` to element detection
+
+### Testing
+
+- 8 new confidence-specific spec tests (matchers_spec.rb)
+- All 440 RSpec tests pass, all smoke tests pass (91/91 MCP, 11/11 Minitest)
+- SimpleCov coverage tracking with minimum threshold (84.0%)
+
 ## 0.2.20 (yanked — incorrect tans-parser dependency)
 
 ## 0.2.21

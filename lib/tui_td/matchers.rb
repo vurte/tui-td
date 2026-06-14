@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# rubocop:disable Metrics/ModuleLength, Metrics/BlockLength, Metrics/ParameterLists, Layout/LineLength
+# rubocop:disable Metrics/ModuleLength, Metrics/ParameterLists, Layout/LineLength, Metrics/BlockLength
 
 require "rspec/expectations"
 
@@ -167,29 +167,58 @@ module TUITD
 
     # Selector-based matchers — work with both State and Driver (auto-wait)
 
-    RSpec::Matchers.define :have_button do |expected|
+    RSpec::Matchers.define :have_button do |expected, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
-          Selector.new(s).button(text: expected)
+          el = Selector.new(s).button(text: expected)
+          if min_confidence && el
+            el.confidence && el.confidence >= min_confidence
+          else
+            el
+          end
         end
       end
 
-      description { "have button #{expected.inspect}" }
-      failure_message { |_actual| "expected terminal to have a button #{expected.inspect}" }
-      failure_message_when_negated { |_actual| "expected terminal NOT to have a button #{expected.inspect}" }
+      description do
+        desc = "have button #{expected.inspect}"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
+      end
+      failure_message do |_actual|
+        desc = "expected terminal to have a button #{expected.inspect}"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
+      end
+      failure_message_when_negated do |_actual|
+        "expected terminal NOT to have a button #{expected.inspect}"
+      end
     end
 
-    RSpec::Matchers.define :have_dialog do
+    RSpec::Matchers.define :have_dialog do |min_confidence: nil|
       match do |actual|
-        Matchers.auto_wait(actual) { |s| Selector.new(s).dialogs.any? }
+        Matchers.auto_wait(actual) do |s|
+          elements = Selector.new(s).dialogs
+          elements = elements.select { |e| e.confidence && e.confidence >= min_confidence } if min_confidence
+          elements.any?
+        end
       end
 
-      description { "have a dialog" }
-      failure_message { |_actual| "expected terminal to have a dialog" }
-      failure_message_when_negated { |_actual| "expected terminal NOT to have a dialog" }
+      description do
+        desc = "have a dialog"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
+      end
+      failure_message do |_actual|
+        desc = "expected terminal to have a dialog"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
+      end
+      failure_message_when_negated do |_actual|
+        "expected terminal NOT to have a dialog"
+      end
     end
 
-    RSpec::Matchers.define :have_checkbox do |expected|
+    RSpec::Matchers.define :have_checkbox do |expected, min_confidence: nil|
       chain(:checked) { @checked = true }
       chain(:unchecked) { @checked = false }
 
@@ -197,7 +226,12 @@ module TUITD
         Matchers.auto_wait(actual) do |s|
           filters = { text: expected }
           filters[:checked] = @checked unless @checked.nil?
-          Selector.new(s).checkbox(**filters)
+          el = Selector.new(s).checkbox(**filters)
+          if min_confidence && el
+            el.confidence && el.confidence >= min_confidence
+          else
+            el
+          end
         end
       end
 
@@ -205,12 +239,14 @@ module TUITD
         desc = "have checkbox #{expected.inspect}"
         desc += " (checked)" if @checked == true
         desc += " (unchecked)" if @checked == false
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         desc
       end
       failure_message do |_actual|
         desc = "expected terminal to have checkbox #{expected.inspect}"
         desc += " (checked)" if @checked == true
         desc += " (unchecked)" if @checked == false
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         desc
       end
       failure_message_when_negated do |_actual|
@@ -220,15 +256,16 @@ module TUITD
         desc
       end
     end
-
-    RSpec::Matchers.define :have_role do |role, text: nil, checked: nil, disabled: nil|
+    RSpec::Matchers.define :have_role do |role, text: nil, checked: nil, disabled: nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
           filters = {}
           filters[:text] = text if text
           filters[:checked] = checked unless checked.nil?
           filters[:disabled] = disabled unless disabled.nil?
-          Selector.new(s).get_by_role(role, **filters).any?
+          elements = Selector.new(s).get_by_role(role, **filters)
+          elements = elements.select { |e| e.confidence && e.confidence >= min_confidence } if min_confidence
+          elements.any?
         end
       end
 
@@ -237,6 +274,7 @@ module TUITD
         desc += " with text #{text.inspect}" if text
         desc += " (checked)" if checked == true
         desc += " (disabled)" if disabled == true
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         desc
       end
       failure_message do |_actual|
@@ -244,30 +282,37 @@ module TUITD
         desc += " with text #{text.inspect}" if text
         desc += " (checked)" if checked == true
         desc += " (disabled)" if disabled == true
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         desc
       end
       failure_message_when_negated do |_actual|
         desc = "expected terminal NOT to have a :#{role}"
         desc += " with text #{text.inspect}" if text
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
         desc
       end
     end
+    # rubocop:enable Metrics/BlockLength
 
-    # New role matchers (tans-parser 0.1.2)
+    # New role matchers (tans-parser 0.1.2+) with confidence support (0.1.5+)
 
-    RSpec::Matchers.define :have_input do |expected = nil|
+    RSpec::Matchers.define :have_input do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
           if expected
-            Selector.new(s).input(text: expected)
+            el = Selector.new(s).input(text: expected)
+            min_confidence ? (el&.confidence && el.confidence >= min_confidence) : el
           else
-            Selector.new(s).inputs.any?
+            elements = Selector.new(s).inputs
+            min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
           end
         end
       end
 
       description do
-        expected ? "have input #{expected.inspect}" : "have an input field"
+        desc = expected ? "have input #{expected.inspect}" : "have an input field"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have an input #{expected.inspect}" : "expected terminal to have an input field"
@@ -277,19 +322,18 @@ module TUITD
       end
     end
 
-    RSpec::Matchers.define :have_label do |expected = nil|
+    RSpec::Matchers.define :have_label do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
-          if expected
-            Selector.new(s).label(text: expected)
-          else
-            Selector.new(s).labels.any?
-          end
+          elements = expected ? [Selector.new(s).label(text: expected)].compact : Selector.new(s).labels
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
       end
 
       description do
-        expected ? "have label #{expected.inspect}" : "have a label"
+        desc = expected ? "have label #{expected.inspect}" : "have a label"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have a label #{expected.inspect}" : "expected terminal to have a label"
@@ -299,19 +343,18 @@ module TUITD
       end
     end
 
-    RSpec::Matchers.define :have_menu do |expected = nil|
+    RSpec::Matchers.define :have_menu do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
-          if expected
-            Selector.new(s).menu(text: expected)
-          else
-            Selector.new(s).menus.any?
-          end
+          elements = expected ? [Selector.new(s).menu(text: expected)].compact : Selector.new(s).menus
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
       end
 
       description do
-        expected ? "have menu #{expected.inspect}" : "have a menu"
+        desc = expected ? "have menu #{expected.inspect}" : "have a menu"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have a menu #{expected.inspect}" : "expected terminal to have a menu"
@@ -321,19 +364,18 @@ module TUITD
       end
     end
 
-    RSpec::Matchers.define :have_tab do |expected = nil|
+    RSpec::Matchers.define :have_tab do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
-          if expected
-            Selector.new(s).tab(text: expected)
-          else
-            Selector.new(s).tabs.any?
-          end
+          elements = expected ? [Selector.new(s).tab(text: expected)].compact : Selector.new(s).tabs
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
       end
 
       description do
-        expected ? "have tab #{expected.inspect}" : "have a tab"
+        desc = expected ? "have tab #{expected.inspect}" : "have a tab"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have a tab #{expected.inspect}" : "expected terminal to have a tab"
@@ -343,19 +385,18 @@ module TUITD
       end
     end
 
-    RSpec::Matchers.define :have_statusbar do |expected = nil|
+    RSpec::Matchers.define :have_statusbar do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
-          if expected
-            Selector.new(s).statusbar(text: expected)
-          else
-            Selector.new(s).statusbars.any?
-          end
+          elements = expected ? [Selector.new(s).statusbar(text: expected)].compact : Selector.new(s).statusbars
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
       end
 
       description do
-        expected ? "have status bar #{expected.inspect}" : "have a status bar"
+        desc = expected ? "have status bar #{expected.inspect}" : "have a status bar"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have a status bar #{expected.inspect}" : "expected terminal to have a status bar"
@@ -365,19 +406,23 @@ module TUITD
       end
     end
 
-    RSpec::Matchers.define :have_progress_bar do |expected = nil|
+    RSpec::Matchers.define :have_progress_bar do |expected = nil, min_confidence: nil|
       match do |actual|
         Matchers.auto_wait(actual) do |s|
           if expected
-            Selector.new(s).progress_bar(text: expected)
+            el = Selector.new(s).progress_bar(text: expected)
+            min_confidence ? (el&.confidence && el.confidence >= min_confidence) : el
           else
-            Selector.new(s).progress_bars.any?
+            elements = Selector.new(s).progress_bars
+            min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
           end
         end
       end
 
       description do
-        expected ? "have progress bar #{expected.inspect}" : "have a progress bar"
+        desc = expected ? "have progress bar #{expected.inspect}" : "have a progress bar"
+        desc += " (min_confidence: #{min_confidence})" if min_confidence
+        desc
       end
       failure_message do |_actual|
         expected ? "expected terminal to have a progress bar #{expected.inspect}" : "expected terminal to have a progress bar"
@@ -386,7 +431,6 @@ module TUITD
         expected ? "expected terminal NOT to have a progress bar #{expected.inspect}" : "expected terminal NOT to have a progress bar"
       end
     end
-
     # Snapshot comparison matcher — works with both State and Driver (auto-wait).
     # Snapshot comparison matcher — supports both named (disk-based) and
     # legacy in-memory State objects.
@@ -402,6 +446,7 @@ module TUITD
     #   pre = driver.snapshot
     #   expect(driver).to match_snapshot(pre, chars_only: true)
     #
+    # rubocop:disable Metrics/BlockLength
     RSpec::Matchers.define :match_snapshot do |ref, type: nil, wait: false, chars_only: nil, ignore_rows: nil, region: nil|
       match do |actual|
         # Normalize type: backward compat for chars_only parameter
@@ -488,4 +533,4 @@ module TUITD
     end
   end
 end
-# rubocop:enable Metrics/ModuleLength, Metrics/BlockLength, Metrics/ParameterLists, Layout/LineLength
+# rubocop:enable Metrics/ModuleLength, Metrics/ParameterLists, Layout/LineLength, Metrics/BlockLength

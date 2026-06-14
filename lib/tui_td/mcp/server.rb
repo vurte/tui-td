@@ -291,7 +291,7 @@ module TUITD
               },
               {
                 name: "tui_find_elements",
-                description: "Search for UI elements in the terminal state. Returns buttons, checkboxes, dialogs, statusbars, progress bars, inputs, labels, menus, and tabs detected by heuristic analysis. Optionally filter by role, text, checked, and/or disabled state.",
+                description: "Search for UI elements in the terminal state. Returns buttons, checkboxes, dialogs, statusbars, progress bars, inputs, labels, menus, and tabs detected by heuristic analysis. Optionally filter by role, text, checked, disabled state, and/or minimum confidence score (0.0-1.0). Elements include a confidence score from tans-parser 0.1.5+.",
                 inputSchema: {
                   type: "object",
                   properties: {
@@ -310,6 +310,10 @@ module TUITD
                     disabled: {
                       type: "boolean",
                       description: "Filter by disabled state. Optional.",
+                    },
+                    min_confidence: {
+                      type: "number",
+                      description: "Minimum confidence score (0.0-1.0) for element detection. Higher values reduce false positives. Default: no filter. Example: 0.8.",
                     },
                   },
                 },
@@ -693,6 +697,7 @@ module TUITD
         text = args["text"]
         checked = args.key?("checked") ? args["checked"] : nil
         disabled = args.key?("disabled") ? args["disabled"] : nil
+        min_confidence = args["min_confidence"]
 
         filters = {}
         filters[:text] = text if text
@@ -709,11 +714,15 @@ module TUITD
                      result
                    end
 
+        # Apply confidence filter (tans-parser 0.1.5+)
+        elements = elements.select { |e| e.confidence && e.confidence >= min_confidence } if min_confidence
+
         if elements.empty?
           desc = role ? "role :#{role}" : "any role"
           desc += " with text #{text.inspect}" if text
           desc += " checked=#{checked}" unless checked.nil?
           desc += " disabled=#{disabled}" unless disabled.nil?
+          desc += " min_confidence=#{min_confidence}" if min_confidence
           "No elements found for #{desc}"
         else
           lines = ["Found #{elements.size} element(s):"]
@@ -725,6 +734,7 @@ module TUITD
             parts << "(checked)" if el.checked
             parts << "(disabled)" if el.disabled
             parts << "(focused)" if el.focused
+            parts << "[conf=#{format("%.2f", el.confidence)}]" if el.confidence
             lines << parts.join(" ")
           end
           lines.join("\n")

@@ -1,0 +1,37 @@
+{
+  "name": "Confidence-filtered detection (tans-parser 0.1.5+)",
+  "description": "min_confidence filters UI elements by detection confidence. [ OK ] = 0.9, ( Cancel ) = 0.85. Single-char and numeric brackets excluded (reduced false positives in 0.1.5).",
+  "rows": 5,
+  "cols": 30,
+  "steps": [
+    {
+      "start": "printf '[ OK ] ( Cancel ) [12]'"
+    },
+    {
+      "wait_for_stable": true
+    },
+    {
+      "assert_button": "OK",
+      "min_confidence": 0.8,
+      "comment": "[] bracket → confidence 0.9 (≥ 0.8 = pass)"
+    },
+    {
+      "assert_button": "Cancel",
+      "min_confidence": 0.8,
+      "comment": "() paren → confidence 0.85 (≥ 0.8 = pass)"
+    },
+    {
+      "assert_button": "OK",
+      "min_confidence": 0.95,
+      "comment": "0.9 < 0.95 → FAIL (demonstrates threshold)"
+    },
+    {
+      "assert_role": "button",
+      "text": "12",
+      "comment": "Numeric-only [12] excluded in 0.1.5 — should not be found"
+    },
+    {
+      "close": true
+    }
+  ]
+}

@@ -110,9 +110,18 @@ module TUITD
 
       # --- Selector-based ---
 
-      def assert_button(actual, expected)
-        result = auto_wait(actual) { |s| TUITD::Selector.new(s).button(text: expected) }
-        assert(result, "Expected terminal to have a button #{expected.inspect}")
+      def assert_button(actual, expected, min_confidence: nil)
+        result = auto_wait(actual) do |s|
+          el = TUITD::Selector.new(s).button(text: expected)
+          if min_confidence && el
+            el.confidence && el.confidence >= min_confidence
+          else
+            el
+          end
+        end
+        msg = "Expected terminal to have a button #{expected.inspect}"
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
+        assert(result, msg)
       end
 
       def refute_button(actual, expected)
@@ -120,9 +129,14 @@ module TUITD
         assert(result, "Expected terminal NOT to have a button #{expected.inspect}")
       end
 
-      def assert_dialog(actual)
-        result = auto_wait(actual) { |s| TUITD::Selector.new(s).dialogs.any? }
-        assert(result, "Expected terminal to have a dialog")
+      def assert_dialog(actual, min_confidence: nil)
+        result = auto_wait(actual) do |s|
+          elements = TUITD::Selector.new(s).dialogs
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
+        end
+        msg = "Expected terminal to have a dialog"
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
+        assert(result, msg)
       end
 
       def refute_dialog(actual)
@@ -130,107 +144,123 @@ module TUITD
         assert(result, "Expected terminal NOT to have a dialog")
       end
 
-      def assert_checkbox(actual, expected, checked: nil, unchecked: nil)
+      def assert_checkbox(actual, expected, checked: nil, unchecked: nil, min_confidence: nil)
         checked = false if unchecked
         result = auto_wait(actual) do |s|
           filters = { text: expected }
           filters[:checked] = checked unless checked.nil?
-          TUITD::Selector.new(s).checkbox(**filters)
+          el = TUITD::Selector.new(s).checkbox(**filters)
+          if min_confidence && el
+            el.confidence && el.confidence >= min_confidence
+          else
+            el
+          end
         end
         msg = "Expected terminal to have checkbox #{expected.inspect}"
         msg += " (checked)" if checked == true
         msg += " (unchecked)" if checked == false
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_role(actual, role, text: nil, checked: nil, disabled: nil)
+      def assert_role(actual, role, text: nil, checked: nil, disabled: nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
           filters = {}
           filters[:text] = text if text
           filters[:checked] = checked unless checked.nil?
           filters[:disabled] = disabled unless disabled.nil?
-          TUITD::Selector.new(s).get_by_role(role, **filters).any?
+          elements = TUITD::Selector.new(s).get_by_role(role, **filters)
+          if min_confidence
+            elements.any? { |e| e.confidence && e.confidence >= min_confidence }
+          else
+            elements.any?
+          end
         end
         msg = "Expected terminal to have role :#{role}"
         msg += " with text #{text.inspect}" if text
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_input(actual, expected = nil)
+      def assert_input(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
+          sel = TUITD::Selector.new(s)
           if expected
-            TUITD::Selector.new(s).input(text: expected)
+            el = sel.input(text: expected)
+            min_confidence ? (el&.confidence && el.confidence >= min_confidence) : el
           else
-            TUITD::Selector.new(s).inputs.any?
+            elements = sel.inputs
+            min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
           end
         end
         msg = "Expected terminal to have an input field"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_label(actual, expected = nil)
+      def assert_label(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
-          if expected
-            TUITD::Selector.new(s).label(text: expected)
-          else
-            TUITD::Selector.new(s).labels.any?
-          end
+          sel = TUITD::Selector.new(s)
+          elements = expected ? [sel.label(text: expected)].compact : sel.labels
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
         msg = "Expected terminal to have a label"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_menu(actual, expected = nil)
+      def assert_menu(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
-          if expected
-            TUITD::Selector.new(s).menu(text: expected)
-          else
-            TUITD::Selector.new(s).menus.any?
-          end
+          sel = TUITD::Selector.new(s)
+          elements = expected ? [sel.menu(text: expected)].compact : sel.menus
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
         msg = "Expected terminal to have a menu"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_tab(actual, expected = nil)
+      def assert_tab(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
-          if expected
-            TUITD::Selector.new(s).tab(text: expected)
-          else
-            TUITD::Selector.new(s).tabs.any?
-          end
+          sel = TUITD::Selector.new(s)
+          elements = expected ? [sel.tab(text: expected)].compact : sel.tabs
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
         msg = "Expected terminal to have a tab"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_statusbar(actual, expected = nil)
+      def assert_statusbar(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
-          if expected
-            TUITD::Selector.new(s).statusbar(text: expected)
-          else
-            TUITD::Selector.new(s).statusbars.any?
-          end
+          sel = TUITD::Selector.new(s)
+          elements = expected ? [sel.statusbar(text: expected)].compact : sel.statusbars
+          min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
         end
         msg = "Expected terminal to have a status bar"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
-      def assert_progress_bar(actual, expected = nil)
+      def assert_progress_bar(actual, expected = nil, min_confidence: nil)
         result = auto_wait(actual) do |s|
+          sel = TUITD::Selector.new(s)
           if expected
-            TUITD::Selector.new(s).progress_bar(text: expected)
+            el = sel.progress_bar(text: expected)
+            min_confidence ? (el&.confidence && el.confidence >= min_confidence) : el
           else
-            TUITD::Selector.new(s).progress_bars.any?
+            elements = sel.progress_bars
+            min_confidence ? elements.any? { |e| e.confidence && e.confidence >= min_confidence } : elements.any?
           end
         end
         msg = "Expected terminal to have a progress bar"
         msg += " #{expected.inspect}" if expected
+        msg += " (min_confidence: #{min_confidence})" if min_confidence
         assert(result, msg)
       end
 
