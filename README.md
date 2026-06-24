@@ -96,6 +96,9 @@ Examples:
   tui-td drive "vim file.txt" --rows 24 --cols 80
   tui-td test examples/echo_test.json
   tui-td -vl test examples/vim_hello_world.json
+  tui-td test examples/login_form.json       # interactive form test (JSON)
+  rspec examples/rspec_interactive_spec.rb    # interactive form test (RSpec)
+  ruby examples/minitest_interactive_test.rb  # interactive form test (Minitest)
   tui-td serve
 
 Interactive commands (drive mode):

@@ -1,0 +1,39 @@
+{
+  "name": "Login form — interactive test (JSON)",
+  "rows": 12,
+  "cols": 40,
+  "timeout": 10,
+  "steps": [
+    {
+      "start": "ruby examples/login_form.rb",
+      "timeout": 5
+    },
+    {
+      "wait_for_text": "Login Form",
+      "timeout": 5
+    },
+    {
+      "send": "Alice\n"
+    },
+    {
+      "wait_for_text": "Alice",
+      "timeout": 3
+    },
+    {
+      "send": "s3cret!\n"
+    },
+    {
+      "wait_for_text": "Login successful!",
+      "timeout": 5
+    },
+    {
+      "assert_text": "Welcome, Alice!"
+    },
+    {
+      "assert_text": "Password is 7 chars."
+    },
+    {
+      "close": true
+    }
+  ]
+}
