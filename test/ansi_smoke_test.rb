@@ -69,12 +69,9 @@ class ANSISmokeTest < Minitest::Test
 
   # ── Unsupported sequences (documenting known gaps) ──
 
-  def test_cha_cursor_horizontal_absolute_unsupported
+  def test_cha_cursor_horizontal_absolute_works
     # CHA: \e[G — move cursor to column N on current row
-    # KNOWN ISSUE: CHA is matched by tans-parser regex but not handled.
-    # Cursor stays at wrong position → text lands in wrong column.
-    # Ref: https://gitlab.com/haluk786/tans-parser/-/work_items/8
-    skip "CHA not yet supported in tans-parser (tans-parser issue #8)"
+    # Now supported as of tans-parser v0.1.5+ (commit 5864946)
     driver = TUITD::Driver.new(
       "printf '          Original\e[1GCHA_REPLACE'",
       rows: 3, cols: 30, timeout: 5,
@@ -82,9 +79,8 @@ class ANSISmokeTest < Minitest::Test
     driver.start
     state = driver.state
     row0 = state[:rows][0].map { |c| c[:char] }.join
-    # Expected: CHA_REPLACE at column 0 (overwrites spaces)
-    # Actual (unsupported): CHA_REPLACE appended after "Original"
-    assert row0.start_with?("CHA_REPLACE"), "CHA should move to column 1"
+    # CHA moves to column 1 (1-based), so CHA_REPLACE should overwrite from col 0
+    assert row0.start_with?("CHA_REPLACE"), "CHA should move to column 1; got: #{row0[0..20].inspect}"
   ensure
     driver&.close
   end
